@@ -92,13 +92,17 @@ def process_feed(feed_url: str) -> int:
     return count
 
 
+SEEN_DATE = "0000-00-00"  # ダミーのstart_date（seenレコード用）
+
+
 def is_seen(url_hash: str) -> bool:
-    resp = seen_table.get_item(Key={"source_id": f"seen#{url_hash}"})
+    resp = seen_table.get_item(Key={"source_id": f"seen#{url_hash}", "start_date": SEEN_DATE})
     return "Item" in resp
 
 
 def mark_seen(url_hash: str):
     seen_table.put_item(Item={
         "source_id": f"seen#{url_hash}",
+        "start_date": SEEN_DATE,
         "ttl": int((datetime.utcnow() + timedelta(days=30)).timestamp()),
     })

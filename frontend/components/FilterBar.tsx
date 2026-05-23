@@ -16,6 +16,21 @@ const PRIZE_OPTIONS = [
   { label: "賞品なし", value: "NO_PRIZE" },
 ];
 
+const THEME_OPTIONS = [
+  { label: "すべて", value: "" },
+  { label: "AI", value: "AI" },
+  { label: "Web", value: "Web" },
+  { label: "モバイル", value: "モバイル" },
+  { label: "ゲーム", value: "ゲーム" },
+  { label: "教育", value: "教育" },
+  { label: "社会課題", value: "社会課題" },
+  { label: "金融", value: "金融" },
+  { label: "データ分析", value: "データ分析" },
+  { label: "ブロックチェーン", value: "ブロックチェーン" },
+  { label: "AR/VR/XR", value: "AR/VR/XR" },
+  { label: "ロボット", value: "ロボット" },
+];
+
 const STATUS_OPTIONS = [
   { label: "開催予定", value: "UPCOMING" },
   { label: "過去", value: "PAST" },
@@ -63,6 +78,12 @@ export function FilterBar() {
         value={current("prize")}
         options={PRIZE_OPTIONS}
         onChange={(v) => setParam("prize", v)}
+      />
+      <Select
+        label="テーマ"
+        value={current("theme")}
+        options={THEME_OPTIONS}
+        onChange={(v) => setParam("theme", v)}
       />
       <label className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer select-none">
         <input

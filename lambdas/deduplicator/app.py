@@ -38,10 +38,14 @@ def write_to_dynamo(item: dict):
         )
         print(f"[deduplicator] inserted: {source_id}")
     except dynamodb.meta.client.exceptions.ConditionalCheckFailedException:
-        # 既存レコードはupdated_atだけ更新
         table.update_item(
             Key={"source_id": source_id, "start_date": item.get("start_date", "")},
-            UpdateExpression="SET updated_at = :ua",
-            ExpressionAttributeValues={":ua": item["updated_at"]},
+            UpdateExpression="SET updated_at = :ua, description = :desc, #st = :status",
+            ExpressionAttributeNames={"#st": "status"},
+            ExpressionAttributeValues={
+                ":ua": item["updated_at"],
+                ":desc": item.get("description", ""),
+                ":status": item.get("status", "UPCOMING"),
+            },
         )
-        print(f"[deduplicator] already exists (skipped): {source_id}")
+        print(f"[deduplicator] updated existing: {source_id}")

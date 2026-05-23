@@ -27,11 +27,11 @@ def get_tavily_api_key() -> str:
 TAVILY_API = "https://api.tavily.com/search"
 
 QUERIES = [
-    "ハッカソン 参加募集 2025",
-    "hackathon japan 2025 apply",
-    "ハッカソン 賞金 2025 エントリー",
-    "ハッカソン 初心者 2025",
-    "ハッカソン オンライン 2025 募集",
+    "ハッカソン 参加募集 2026",
+    "hackathon japan 2026 apply",
+    "ハッカソン 賞金 2026 エントリー",
+    "ハッカソン 初心者 2026",
+    "ハッカソン オンライン 2026 募集",
 ]
 
 # connpass/Doorkeeper/Devpostは別途APIで取得するのでスキップ

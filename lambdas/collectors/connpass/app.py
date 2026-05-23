@@ -4,9 +4,11 @@ https://connpass.com/about/api/
 """
 import json
 import os
+import time
 import boto3
 import requests
 from datetime import datetime, timedelta
+from html.parser import HTMLParser
 
 TABLE_NAME = os.environ["DYNAMODB_TABLE"]
 QUEUE_URL = os.environ.get("DEDUP_QUEUE_URL", "")
@@ -19,8 +21,35 @@ table = dynamodb.Table(TABLE_NAME)
 
 CONNPASS_API = "https://connpass.com/api/v2/events/"
 KEYWORDS = ["ハッカソン", "hackathon"]
+HACKATHON_KEYWORDS = ["ハッカソン", "hackathon", "hack"]
 
 _api_key: str | None = None
+
+
+class _Stripper(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self._parts = []
+
+    def handle_data(self, data):
+        self._parts.append(data)
+
+    def get_text(self, max_len=300):
+        text = " ".join(p.strip() for p in self._parts if p.strip())
+        return text[:max_len]
+
+
+def strip_html(html: str, max_len: int = 300) -> str:
+    if not html:
+        return ""
+    s = _Stripper()
+    s.feed(html)
+    return s.get_text(max_len)
+
+
+def is_hackathon(title: str) -> bool:
+    t = title.lower()
+    return any(k.lower() in t for k in HACKATHON_KEYWORDS)
 
 
 def get_api_key() -> str:
@@ -33,7 +62,9 @@ def get_api_key() -> str:
 
 def handler(event, context):
     collected = []
-    for keyword in KEYWORDS:
+    for i, keyword in enumerate(KEYWORDS):
+        if i > 0:
+            time.sleep(5)
         items = fetch_events(keyword)
         collected.extend(items)
         print(f"[connpass] keyword={keyword} fetched={len(items)}")
@@ -54,18 +85,29 @@ def fetch_events(keyword: str) -> list:
     headers = {"X-Api-Key": get_api_key()}
 
     while True:
-        resp = requests.get(
-            CONNPASS_API,
-            params={
-                "keyword": keyword,
-                "count": count,
-                "start": start,
-                "order": 2,   # 開催日順
-            },
-            headers=headers,
-            timeout=30,
-        )
-        resp.raise_for_status()
+        for attempt in range(4):
+            resp = requests.get(
+                CONNPASS_API,
+                params={
+                    "keyword": keyword,
+                    "count": count,
+                    "start": start,
+                    "order": 2,   # 開催日順
+                },
+                headers=headers,
+                timeout=30,
+            )
+            if resp.status_code == 429:
+                wait = 10 * (2 ** attempt)
+                print(f"[connpass] 429 rate limit (attempt {attempt+1}), waiting {wait}s...")
+                time.sleep(wait)
+                continue
+            resp.raise_for_status()
+            break
+        else:
+            print(f"[connpass] gave up after rate limit retries at start={start}")
+            break
+
         data = resp.json()
         events = data.get("events", [])
         if not events:
@@ -79,6 +121,7 @@ def fetch_events(keyword: str) -> list:
         if len(events) < count:
             break
         start += count
+        time.sleep(1)
 
     return results
 
@@ -86,8 +129,13 @@ def fetch_events(keyword: str) -> list:
 def parse_event(e: dict) -> dict | None:
     started_at = (e.get("started_at") or "")[:10]
     ended_at = (e.get("ended_at") or "")[:10]
+    title = e.get("title", "")
 
     if not started_at:
+        return None
+
+    # タイトルにハッカソン関連キーワードがないものは除外
+    if not is_hackathon(title):
         return None
 
     one_year_ago = (datetime.utcnow() - timedelta(days=365)).strftime("%Y-%m-%d")
@@ -103,12 +151,12 @@ def parse_event(e: dict) -> dict | None:
 
     return {
         "source_id": f"connpass#{e['id']}",
-        "title": e.get("title", ""),
+        "title": title,
         "source_url": e.get("url", ""),
         "source_name": "connpass",
         "start_date": started_at,
         "end_date": ended_at,
-        "description": (e.get("description") or "")[:500],
+        "description": strip_html(e.get("description") or ""),
         "location": place or None,
         "is_online": is_online,
         "online_status": online_status,

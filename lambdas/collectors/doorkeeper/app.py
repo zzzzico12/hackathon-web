@@ -8,8 +8,7 @@ import sys
 import boto3
 import requests
 from datetime import datetime, timedelta
-
-sys.path.insert(0, "/opt/python")
+from html.parser import HTMLParser
 
 TABLE_NAME = os.environ["DYNAMODB_TABLE"]
 QUEUE_URL = os.environ.get("DEDUP_QUEUE_URL", "")
@@ -20,6 +19,33 @@ table = dynamodb.Table(TABLE_NAME)
 
 DOORKEEPER_API = "https://api.doorkeeper.jp/events"
 KEYWORDS = ["ハッカソン", "hackathon"]
+HACKATHON_KEYWORDS = ["ハッカソン", "hackathon", "hack"]
+
+
+class _Stripper(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self._parts = []
+
+    def handle_data(self, data):
+        self._parts.append(data)
+
+    def get_text(self, max_len=300):
+        text = " ".join(p.strip() for p in self._parts if p.strip())
+        return text[:max_len]
+
+
+def strip_html(html: str, max_len: int = 300) -> str:
+    if not html:
+        return ""
+    s = _Stripper()
+    s.feed(html)
+    return s.get_text(max_len)
+
+
+def is_hackathon(title: str) -> bool:
+    t = title.lower()
+    return any(k.lower() in t for k in HACKATHON_KEYWORDS)
 
 
 def handler(event, context):
@@ -76,8 +102,13 @@ def fetch_events(keyword: str) -> list:
 def parse_event(e: dict) -> dict | None:
     starts_at = (e.get("starts_at") or "")[:10]
     ends_at = (e.get("ends_at") or "")[:10]
+    title = e.get("title", "")
 
     if not starts_at:
+        return None
+
+    # タイトルにハッカソン関連キーワードがないものは除外
+    if not is_hackathon(title):
         return None
 
     one_year_ago = (datetime.utcnow() - timedelta(days=365)).strftime("%Y-%m-%d")
@@ -97,12 +128,12 @@ def parse_event(e: dict) -> dict | None:
 
     return {
         "source_id": f"doorkeeper#{event_id}",
-        "title": e.get("title", ""),
+        "title": title,
         "source_url": e.get("public_url", ""),
         "source_name": "doorkeeper",
         "start_date": starts_at,
         "end_date": ends_at,
-        "description": (e.get("description") or "")[:500],
+        "description": strip_html(e.get("description") or ""),
         "location": location,
         "is_online": is_online,
         "online_status": online_status,
@@ -134,7 +165,7 @@ def write_to_dynamo(item: dict):
         )
     except dynamodb.meta.client.exceptions.ConditionalCheckFailedException:
         table.update_item(
-            Key={"source_id": item["source_id"]},
+            Key={"source_id": item["source_id"], "start_date": item["start_date"]},
             UpdateExpression="SET updated_at = :ua",
             ExpressionAttributeValues={":ua": item["updated_at"]},
         )

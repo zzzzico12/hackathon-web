@@ -16,6 +16,7 @@ export default async function Home({ searchParams }: SearchParamsProps) {
     ...(sp.online && { online: sp.online as "true" | "false" }),
     ...(sp.prize && { prize: sp.prize as PrizeBucket }),
     ...(sp.beginner && { beginner: "true" }),
+    ...(sp.theme && { theme: sp.theme }),
     ...(sp.next_token && { next_token: sp.next_token }),
     limit: 24,
   };

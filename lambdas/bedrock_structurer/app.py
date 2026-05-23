@@ -9,7 +9,7 @@ from datetime import datetime
 
 TABLE_NAME = os.environ["DYNAMODB_TABLE"]
 BEDROCK_REGION = os.environ.get("BEDROCK_REGION", "ap-northeast-1")
-MODEL_ID = "anthropic.claude-3-5-haiku-20241022-v1:0"
+MODEL_ID = "jp.anthropic.claude-sonnet-4-5-20250929-v1:0"
 
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(TABLE_NAME)
@@ -86,7 +86,15 @@ def extract_with_bedrock(url: str, title: str, content: str) -> dict | None:
         )
         result = json.loads(resp["body"].read())
         text = result["content"][0]["text"].strip()
-        return json.loads(text)
+        if not text:
+            return None
+        # コードブロックを除去して最初のJSONオブジェクトを抽出
+        text = text.strip("```json").strip("```").strip()
+        start = text.find("{")
+        end = text.rfind("}") + 1
+        if start == -1 or end == 0:
+            return None
+        return json.loads(text[start:end])
     except Exception as e:
         print(f"[bedrock_structurer] bedrock error for {url}: {e}")
         return None
@@ -135,6 +143,9 @@ def build_item(extracted: dict, url: str) -> dict:
 
 
 def write_to_dynamo(item: dict):
+    if not item.get("start_date"):
+        print(f"[bedrock_structurer] skipping item with no start_date: {item.get('title')}")
+        return
     try:
         table.put_item(
             Item=item,
@@ -142,7 +153,7 @@ def write_to_dynamo(item: dict):
         )
     except dynamodb.meta.client.exceptions.ConditionalCheckFailedException:
         table.update_item(
-            Key={"source_id": item["source_id"]},
+            Key={"source_id": item["source_id"], "start_date": item["start_date"]},
             UpdateExpression="SET updated_at = :ua, title = :t",
             ExpressionAttributeValues={
                 ":ua": item["updated_at"],
