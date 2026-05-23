@@ -44,7 +44,6 @@ Resources:
         - AttributeName: start_date
           KeyType: RANGE
       GlobalSecondaryIndexes:
-        # 開催予定一覧（デフォルト表示）
         - IndexName: status-start_date-index
           KeySchema:
             - AttributeName: status
@@ -53,7 +52,6 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
-        # オンライン/オフライン絞り込み
         - IndexName: online_status-start_date-index
           KeySchema:
             - AttributeName: online_status
@@ -62,7 +60,6 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
-        # 賞金帯絞り込み
         - IndexName: prize_bucket-start_date-index
           KeySchema:
             - AttributeName: prize_bucket
@@ -73,7 +70,7 @@ Resources:
             ProjectionType: ALL
 
 # ─────────────────────────────────────────
-# SQS キュー
+# SQS キュー（SSE暗号化有効）
 # ─────────────────────────────────────────
   ScraperQueue:
     Type: AWS::SQS::Queue
@@ -82,6 +79,7 @@ Resources:
       FifoQueue: true
       ContentBasedDeduplication: true
       VisibilityTimeout: 360
+      SqsManagedSseEnabled: true
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt ScraperDLQ.Arn
         maxReceiveCount: 3
@@ -92,12 +90,14 @@ Resources:
       QueueName: hackathon-scraper-dlq.fifo
       FifoQueue: true
       ContentBasedDeduplication: true
+      SqsManagedSseEnabled: true
 
   BedrockQueue:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: hackathon-bedrock
       VisibilityTimeout: 360
+      SqsManagedSseEnabled: true
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt BedrockDLQ.Arn
         maxReceiveCount: 3
@@ -106,16 +106,21 @@ Resources:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: hackathon-bedrock-dlq
+      SqsManagedSseEnabled: true
 
   DeduplicatorQueue:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: hackathon-deduplicator
       VisibilityTimeout: 60
+      SqsManagedSseEnabled: true
 
 # ─────────────────────────────────────────
-# Lambda 共通 IAM ロール
+# IAM ロール（最小権限・役割別）
 # ─────────────────────────────────────────
+
+  # 収集系: キューへの送信 + SSMの読み取りのみ
+  # (GoogleAlerts は seen# レコード管理のため DynamoDB GetItem/PutItem も必要)
   CollectorRole:
     Type: AWS::IAM::Role
     Properties:
@@ -129,23 +134,46 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Policies:
-        - PolicyName: hackathon-collector
+        - PolicyName: collector-policy
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
-                  - dynamodb:PutItem
-                  - dynamodb:UpdateItem
-                  - dynamodb:GetItem
-                  - dynamodb:Query
-                  - dynamodb:Scan
+                  - sqs:SendMessage
                 Resource:
-                  - !GetAtt HackathonsTable.Arn
-                  - !Sub "${HackathonsTable.Arn}/index/*"
+                  - !GetAtt ScraperQueue.Arn
+                  - !GetAtt DeduplicatorQueue.Arn
               - Effect: Allow
                 Action:
-                  - sqs:SendMessage
+                  - ssm:GetParameter
+                Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/hackathon/*"
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                Resource: !GetAtt HackathonsTable.Arn
+
+  # 処理系: キューの受信/削除 + DynamoDB書き込み + Bedrock呼び出し
+  ProcessorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: processor-policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
                   - sqs:ReceiveMessage
                   - sqs:DeleteMessage
                   - sqs:GetQueueAttributes
@@ -155,12 +183,49 @@ Resources:
                   - !GetAtt DeduplicatorQueue.Arn
               - Effect: Allow
                 Action:
-                  - ssm:GetParameter
-                Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/hackathon/*"
+                  - sqs:SendMessage
+                Resource:
+                  - !GetAtt BedrockQueue.Arn
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:GetItem
+                  - dynamodb:Query
+                Resource:
+                  - !GetAtt HackathonsTable.Arn
+                  - !Sub "${HackathonsTable.Arn}/index/*"
               - Effect: Allow
                 Action:
                   - bedrock:InvokeModel
                 Resource: "*"
+
+  # API系: DynamoDB読み取りのみ（書き込み不可）
+  ApiRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: api-read-policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                Resource:
+                  - !GetAtt HackathonsTable.Arn
+                  - !Sub "${HackathonsTable.Arn}/index/*"
 
 # ─────────────────────────────────────────
 # Lambda 関数
@@ -236,7 +301,7 @@ Resources:
       FunctionName: hackathon-scraper
       CodeUri: lambdas/scraper/
       Handler: app.handler
-      Role: !GetAtt CollectorRole.Arn
+      Role: !GetAtt ProcessorRole.Arn
       Timeout: 60
       Events:
         SQSTrigger:
@@ -251,14 +316,14 @@ Resources:
       FunctionName: hackathon-bedrock-structurer
       CodeUri: lambdas/bedrock_structurer/
       Handler: app.handler
-      Role: !GetAtt CollectorRole.Arn
+      Role: !GetAtt ProcessorRole.Arn
       Timeout: 120
       Events:
         SQSTrigger:
           Type: SQS
           Properties:
             Queue: !GetAtt BedrockQueue.Arn
-            BatchSize: 1   # Bedrockのレート制限に配慮
+            BatchSize: 1
 
   DeduplicatorFunction:
     Type: AWS::Serverless::Function
@@ -266,7 +331,7 @@ Resources:
       FunctionName: hackathon-deduplicator
       CodeUri: lambdas/deduplicator/
       Handler: app.handler
-      Role: !GetAtt CollectorRole.Arn
+      Role: !GetAtt ProcessorRole.Arn
       Timeout: 60
       Events:
         SQSTrigger:
@@ -286,7 +351,12 @@ Resources:
       Cors:
         AllowMethods: "'GET,OPTIONS'"
         AllowHeaders: "'Content-Type'"
-        AllowOrigin: "'*'"
+        AllowOrigin: "'https://hackathon.zzzzico.click'"
+      MethodSettings:
+        - ResourcePath: "/*"
+          HttpMethod: "*"
+          ThrottlingBurstLimit: 50
+          ThrottlingRateLimit: 20
 
   ApiFunction:
     Type: AWS::Serverless::Function
@@ -294,7 +364,7 @@ Resources:
       FunctionName: hackathon-api
       CodeUri: lambdas/api/
       Handler: app.handler
-      Role: !GetAtt CollectorRole.Arn
+      Role: !GetAtt ApiRole.Arn
       Timeout: 10
       MemorySize: 128
       Events:

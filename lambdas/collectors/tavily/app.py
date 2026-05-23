@@ -26,13 +26,13 @@ def get_tavily_api_key() -> str:
 
 TAVILY_API = "https://api.tavily.com/search"
 
-QUERIES = [
-    "ハッカソン 参加募集 2026",
-    "hackathon japan 2026 apply",
-    "ハッカソン 賞金 2026 エントリー",
-    "ハッカソン 初心者 2026",
-    "ハッカソン オンライン 2026 募集",
-]
+def _queries() -> list[str]:
+    year = datetime.utcnow().year
+    return [
+        f"ハッカソン 参加募集 {year}",
+        f"hackathon japan {year}",
+        f"ハッカソン 賞金 {year}",
+    ]
 
 # connpass/Doorkeeper/Devpostは別途APIで取得するのでスキップ
 SKIP_DOMAINS = {"connpass.com", "doorkeeper.jp", "devpost.com"}
@@ -41,7 +41,7 @@ SKIP_DOMAINS = {"connpass.com", "doorkeeper.jp", "devpost.com"}
 def handler(event, context):
     discovered_urls = set()
 
-    for query in QUERIES:
+    for query in _queries():
         urls = search(query)
         discovered_urls.update(urls)
         print(f"[tavily] query='{query}' found={len(urls)} URLs")
