@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 
 const ONLINE_OPTIONS = [
   { label: "すべて", value: "" },
@@ -41,6 +41,7 @@ export function FilterBar() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [open, setOpen] = useState(false);
 
   const setParam = useCallback(
     (key: string, value: string) => {
@@ -50,7 +51,7 @@ export function FilterBar() {
       } else {
         params.delete(key);
       }
-      params.delete("next_token"); // フィルタ変更時はページリセット
+      params.delete("next_token");
       router.push(`${pathname}?${params.toString()}`);
     },
     [router, pathname, searchParams]
@@ -59,7 +60,15 @@ export function FilterBar() {
   const current = (key: string, fallback = "") =>
     searchParams.get(key) ?? fallback;
 
-  return (
+  // アクティブなフィルター数（status=UPCOMINGはデフォルトなのでカウントしない）
+  const activeCount = [
+    current("online"),
+    current("prize"),
+    current("theme"),
+    current("beginner"),
+  ].filter(Boolean).length;
+
+  const filters = (
     <div className="flex flex-wrap gap-3 items-center">
       <Select
         label="開催状況"
@@ -95,6 +104,37 @@ export function FilterBar() {
         初心者歓迎のみ
       </label>
     </div>
+  );
+
+  return (
+    <>
+      {/* モバイル: トグルボタン */}
+      <button
+        className="sm:hidden flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg border border-gray-200 bg-white"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+      >
+        絞り込む
+        {activeCount > 0 && (
+          <span className="inline-flex items-center justify-center w-4 h-4 text-xs rounded-full bg-blue-600 text-white">
+            {activeCount}
+          </span>
+        )}
+        <span className="text-gray-400">{open ? "▲" : "▼"}</span>
+      </button>
+
+      {/* モバイル: 展開時のフィルターパネル */}
+      {open && (
+        <div className="sm:hidden w-full border-t border-gray-100 pt-3 pb-1">
+          {filters}
+        </div>
+      )}
+
+      {/* デスクトップ: 常時表示 */}
+      <div className="hidden sm:flex flex-wrap gap-3 items-center">
+        {filters}
+      </div>
+    </>
   );
 }
 
