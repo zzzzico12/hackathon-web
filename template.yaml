@@ -309,6 +309,20 @@ Resources:
             ScheduleExpression: "cron(10 21 * * ? *)"   # JST 06:10
             ScheduleExpressionTimezone: UTC
 
+  DevpostCollector:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: hackathon-devpost-collector
+      CodeUri: lambdas/collectors/devpost/
+      Handler: app.handler
+      Role: !GetAtt CollectorRole.Arn
+      Events:
+        WeeklySchedule:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: "cron(0 21 ? * TUE *)"   # JST 水曜 06:00
+            ScheduleExpressionTimezone: UTC
+
   TavilyCollector:
     Type: AWS::Serverless::Function
     Properties:

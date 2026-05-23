@@ -37,11 +37,19 @@ const STATUS_OPTIONS = [
   { label: "すべて", value: "ALL" },
 ];
 
+const SORT_OPTIONS = [
+  { label: "開始日（早い順）", value: "" },
+  { label: "賞金（多い順）", value: "prize_desc" },
+];
+
 export function FilterBar() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
+  const [searchInput, setSearchInput] = useState(
+    () => searchParams.get("q") ?? ""
+  );
 
   const setParam = useCallback(
     (key: string, value: string) => {
@@ -57,19 +65,53 @@ export function FilterBar() {
     [router, pathname, searchParams]
   );
 
+  const submitSearch = useCallback(
+    (value: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (value.trim()) {
+        params.set("q", value.trim());
+      } else {
+        params.delete("q");
+      }
+      params.delete("next_token");
+      router.push(`${pathname}?${params.toString()}`);
+    },
+    [router, pathname, searchParams]
+  );
+
   const current = (key: string, fallback = "") =>
     searchParams.get(key) ?? fallback;
 
-  // アクティブなフィルター数（status=UPCOMINGはデフォルトなのでカウントしない）
+  // アクティブなフィルター数（status=UPCOMING・sort=date_ascはデフォルトなのでカウントしない）
   const activeCount = [
     current("online"),
     current("prize"),
     current("theme"),
     current("beginner"),
+    current("q"),
+    current("sort"),
   ].filter(Boolean).length;
 
   const filters = (
     <div className="flex flex-wrap gap-3 items-center">
+      {/* キーワード検索 */}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          submitSearch(searchInput);
+        }}
+        className="flex items-center gap-1"
+      >
+        <input
+          type="text"
+          placeholder="キーワード検索"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          onBlur={() => submitSearch(searchInput)}
+          className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-300 w-36"
+        />
+      </form>
+
       <Select
         label="開催状況"
         value={current("status", "UPCOMING")}
@@ -93,6 +135,12 @@ export function FilterBar() {
         value={current("theme")}
         options={THEME_OPTIONS}
         onChange={(v) => setParam("theme", v)}
+      />
+      <Select
+        label="並び順"
+        value={current("sort")}
+        options={SORT_OPTIONS}
+        onChange={(v) => setParam("sort", v)}
       />
       <label className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer select-none">
         <input

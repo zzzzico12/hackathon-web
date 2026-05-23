@@ -54,7 +54,7 @@ def get_feed_urls() -> list[str]:
 
 def process_feed(feed_url: str) -> int:
     feed = feedparser.parse(feed_url)
-    cutoff = datetime.now(timezone.utc) - timedelta(days=2)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=7)
     count = 0
 
     for entry in feed.entries:

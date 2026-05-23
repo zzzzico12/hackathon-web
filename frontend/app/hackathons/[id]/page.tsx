@@ -33,8 +33,39 @@ export default async function HackathonDetail({ params }: Props) {
     ? `${formatDate(h.start_date)} 〜 ${formatDate(h.end_date)}`
     : formatDate(h.start_date);
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    name: h.title,
+    description: h.description ?? undefined,
+    startDate: h.start_date,
+    endDate: h.end_date || undefined,
+    url: h.source_url || `https://hackathon.zzzzico.click/hackathons/${id}`,
+    eventStatus:
+      h.status === "UPCOMING"
+        ? "https://schema.org/EventScheduled"
+        : "https://schema.org/EventPostponed",
+    eventAttendanceMode: h.is_online
+      ? "https://schema.org/OnlineEventAttendanceMode"
+      : "https://schema.org/OfflineEventAttendanceMode",
+    location: h.is_online
+      ? { "@type": "VirtualLocation", url: h.source_url }
+      : { "@type": "Place", name: h.location ?? "会場未定" },
+    ...(h.prize_amount > 0 && {
+      offers: {
+        "@type": "Offer",
+        price: h.prize_amount,
+        priceCurrency: "JPY",
+      },
+    }),
+  };
+
   return (
     <main className="min-h-screen bg-gray-50">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <header className="bg-white border-b border-gray-100">
         <div className="max-w-3xl mx-auto px-4 py-4">
           <Link href="/" className="text-sm text-blue-600 hover:underline">

@@ -45,17 +45,18 @@ def list_hackathons(qs: dict) -> dict:
     prize        = qs.get("prize")                        # NO_PRIZE / SMALL / LARGE
     beginner     = qs.get("beginner")                     # true / false
     theme        = qs.get("theme")                        # テーマ文字列
+    q            = (qs.get("q") or "").strip()            # キーワード検索
+    sort         = qs.get("sort", "date_asc")             # date_asc / prize_desc
     limit        = min(int(qs.get("limit", "20")), 100)
     next_token   = qs.get("next_token")
 
     exclusive_start = decode_token(next_token) if next_token else None
 
-    filter_expr = None
-    if beginner == "true":
-        filter_expr = Attr("is_beginner_friendly").eq(True)
-    if theme:
-        cond = Attr("themes").contains(theme)
-        filter_expr = filter_expr & cond if filter_expr else cond
+    # 賞金降順ソートはスキャン+メモリソートで処理（小規模データ向け）
+    if sort == "prize_desc":
+        return list_by_prize_desc(status, online, prize, beginner, theme, q, limit)
+
+    filter_expr = _build_filter(beginner, theme, q)
 
     items = []
     last_key = None
@@ -97,7 +98,68 @@ def list_hackathons(qs: dict) -> dict:
     })
 
 
-def query_index(index: str, key_cond, filter_expr, limit: int, exclusive_start: dict | None):
+def list_by_prize_desc(status, online, prize, beginner, theme, q, limit):
+    """賞金降順: 全件取得 → メモリソート → 上位limit件返却（ページング非対応）"""
+    filter_parts = []
+
+    if status and status != "ALL":
+        filter_parts.append(Attr("status").eq(status))
+    if online == "true":
+        filter_parts.append(Attr("online_status").eq("ONLINE"))
+    elif online == "false":
+        filter_parts.append(Attr("online_status").eq("OFFLINE"))
+    if prize:
+        filter_parts.append(Attr("prize_bucket").eq(prize))
+
+    extra = _build_filter(beginner, theme, q)
+    if extra:
+        filter_parts.append(extra)
+
+    filter_expr = None
+    for part in filter_parts:
+        filter_expr = filter_expr & part if filter_expr else part
+
+    kwargs = {}
+    if filter_expr:
+        kwargs["FilterExpression"] = filter_expr
+
+    # ページネーションしながら全件取得
+    all_items = []
+    last_key = None
+    while True:
+        if last_key:
+            kwargs["ExclusiveStartKey"] = last_key
+        result = table.scan(**kwargs)
+        all_items.extend(result.get("Items", []))
+        last_key = result.get("LastEvaluatedKey")
+        if not last_key or len(all_items) > 500:  # 上限500件
+            break
+
+    # 賞金降順 → 開始日昇順でソート
+    all_items.sort(key=lambda x: (-int(x.get("prize_amount") or 0), x.get("start_date", "")))
+    items = all_items[:limit]
+
+    return resp(200, {
+        "items": items,
+        "count": len(items),
+        "next_token": None,
+    })
+
+
+def _build_filter(beginner, theme, q):
+    filter_expr = None
+    if beginner == "true":
+        filter_expr = Attr("is_beginner_friendly").eq(True)
+    if theme:
+        cond = Attr("themes").contains(theme)
+        filter_expr = filter_expr & cond if filter_expr else cond
+    if q:
+        cond = Attr("title").contains(q) | Attr("description").contains(q)
+        filter_expr = filter_expr & cond if filter_expr else cond
+    return filter_expr
+
+
+def query_index(index: str, key_cond, filter_expr, limit: int, exclusive_start):
     kwargs = {
         "IndexName": index,
         "KeyConditionExpression": key_cond,
@@ -119,7 +181,6 @@ def get_hackathon(source_id: str) -> dict:
     from urllib.parse import unquote
     source_id = unquote(source_id)
 
-    # source_idはHASHキーなのでQueryで取得できる（SKは不要）
     result = table.query(
         KeyConditionExpression=Key("source_id").eq(source_id),
         Limit=1,
@@ -142,7 +203,7 @@ def resp(status: int, body: dict) -> dict:
     }
 
 
-def encode_token(key: dict | None) -> str | None:
+def encode_token(key) -> str | None:
     if not key:
         return None
     import base64
@@ -151,7 +212,7 @@ def encode_token(key: dict | None) -> str | None:
     ).decode()
 
 
-def decode_token(token: str) -> dict | None:
+def decode_token(token: str):
     try:
         import base64
         return json.loads(base64.urlsafe_b64decode(token).decode())

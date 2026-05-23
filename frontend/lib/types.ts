@@ -20,6 +20,7 @@ export interface Hackathon {
   is_beginner_friendly: boolean;
   status: Status;
   created_at: string;
+  updated_at?: string;
 }
 
 export interface HackathonListResponse {
@@ -34,6 +35,8 @@ export interface FilterParams {
   prize?: PrizeBucket;
   beginner?: "true";
   theme?: string;
+  q?: string;
+  sort?: "date_asc" | "prize_desc";
   limit?: number;
   next_token?: string;
 }

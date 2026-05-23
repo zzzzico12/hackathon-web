@@ -28,6 +28,8 @@ export default async function Home({ searchParams }: SearchParamsProps) {
     ...(sp.prize && { prize: sp.prize as PrizeBucket }),
     ...(sp.beginner && { beginner: "true" }),
     ...(sp.theme && { theme: sp.theme }),
+    ...(sp.q && { q: sp.q }),
+    ...(sp.sort && { sort: sp.sort as "date_asc" | "prize_desc" }),
     ...(sp.next_token && { next_token: sp.next_token }),
     limit: 24,
   };
