@@ -1,0 +1,332 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Hackathon aggregation site - data collection pipeline
+
+Globals:
+  Function:
+    Runtime: python3.11
+    Timeout: 300
+    MemorySize: 256
+    Environment:
+      Variables:
+        DYNAMODB_TABLE: !Ref HackathonsTable
+        SCRAPER_QUEUE_URL: !Ref ScraperQueue
+        BEDROCK_QUEUE_URL: !Ref BedrockQueue
+        DEDUP_QUEUE_URL: !Ref DeduplicatorQueue
+        BEDROCK_REGION: ap-northeast-1
+
+# ─────────────────────────────────────────
+# DynamoDB
+# ─────────────────────────────────────────
+Resources:
+  HackathonsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: hackathons
+      BillingMode: PAY_PER_REQUEST
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      AttributeDefinitions:
+        - AttributeName: source_id
+          AttributeType: S
+        - AttributeName: start_date
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+        - AttributeName: online_status
+          AttributeType: S
+        - AttributeName: prize_bucket
+          AttributeType: S
+      KeySchema:
+        - AttributeName: source_id
+          KeyType: HASH
+        - AttributeName: start_date
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        # 開催予定一覧（デフォルト表示）
+        - IndexName: status-start_date-index
+          KeySchema:
+            - AttributeName: status
+              KeyType: HASH
+            - AttributeName: start_date
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        # オンライン/オフライン絞り込み
+        - IndexName: online_status-start_date-index
+          KeySchema:
+            - AttributeName: online_status
+              KeyType: HASH
+            - AttributeName: start_date
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        # 賞金帯絞り込み
+        - IndexName: prize_bucket-start_date-index
+          KeySchema:
+            - AttributeName: prize_bucket
+              KeyType: HASH
+            - AttributeName: start_date
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+# ─────────────────────────────────────────
+# SQS キュー
+# ─────────────────────────────────────────
+  ScraperQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: hackathon-scraper.fifo
+      FifoQueue: true
+      ContentBasedDeduplication: true
+      VisibilityTimeout: 360
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ScraperDLQ.Arn
+        maxReceiveCount: 3
+
+  ScraperDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: hackathon-scraper-dlq.fifo
+      FifoQueue: true
+      ContentBasedDeduplication: true
+
+  BedrockQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: hackathon-bedrock
+      VisibilityTimeout: 360
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt BedrockDLQ.Arn
+        maxReceiveCount: 3
+
+  BedrockDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: hackathon-bedrock-dlq
+
+  DeduplicatorQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: hackathon-deduplicator
+      VisibilityTimeout: 60
+
+# ─────────────────────────────────────────
+# Lambda 共通 IAM ロール
+# ─────────────────────────────────────────
+  CollectorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: hackathon-collector
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:GetItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                Resource:
+                  - !GetAtt HackathonsTable.Arn
+                  - !Sub "${HackathonsTable.Arn}/index/*"
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                Resource:
+                  - !GetAtt ScraperQueue.Arn
+                  - !GetAtt BedrockQueue.Arn
+                  - !GetAtt DeduplicatorQueue.Arn
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/hackathon/*"
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource: "*"
+
+# ─────────────────────────────────────────
+# Lambda 関数
+# ─────────────────────────────────────────
+  ConnpassCollector:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: hackathon-connpass-collector
+      CodeUri: lambdas/collectors/connpass/
+      Handler: app.handler
+      Role: !GetAtt CollectorRole.Arn
+      Environment:
+        Variables:
+          CONNPASS_API_KEY_SSM_NAME: /hackathon/connpass_api_key
+      Events:
+        DailySchedule:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: "cron(0 21 * * ? *)"   # JST 06:00
+            ScheduleExpressionTimezone: UTC
+
+  DoorkeeperCollector:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: hackathon-doorkeeper-collector
+      CodeUri: lambdas/collectors/doorkeeper/
+      Handler: app.handler
+      Role: !GetAtt CollectorRole.Arn
+      Events:
+        DailySchedule:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: "cron(5 21 * * ? *)"   # JST 06:05
+            ScheduleExpressionTimezone: UTC
+
+  GoogleAlertsCollector:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: hackathon-google-alerts-collector
+      CodeUri: lambdas/collectors/google_alerts/
+      Handler: app.handler
+      Role: !GetAtt CollectorRole.Arn
+      Environment:
+        Variables:
+          SSM_FEEDS_KEY: /hackathon/google_alerts_feeds
+      Events:
+        DailySchedule:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: "cron(10 21 * * ? *)"   # JST 06:10
+            ScheduleExpressionTimezone: UTC
+
+  TavilyCollector:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: hackathon-tavily-collector
+      CodeUri: lambdas/collectors/tavily/
+      Handler: app.handler
+      Role: !GetAtt CollectorRole.Arn
+      Environment:
+        Variables:
+          TAVILY_API_KEY_SSM_NAME: /hackathon/tavily_api_key
+      Events:
+        WeeklySchedule:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: "cron(0 22 ? * MON *)"   # JST 月曜 07:00
+            ScheduleExpressionTimezone: UTC
+
+  ScraperFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: hackathon-scraper
+      CodeUri: lambdas/scraper/
+      Handler: app.handler
+      Role: !GetAtt CollectorRole.Arn
+      Timeout: 60
+      Events:
+        SQSTrigger:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt ScraperQueue.Arn
+            BatchSize: 5
+
+  BedrockStructurer:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: hackathon-bedrock-structurer
+      CodeUri: lambdas/bedrock_structurer/
+      Handler: app.handler
+      Role: !GetAtt CollectorRole.Arn
+      Timeout: 120
+      Events:
+        SQSTrigger:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt BedrockQueue.Arn
+            BatchSize: 1   # Bedrockのレート制限に配慮
+
+  DeduplicatorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: hackathon-deduplicator
+      CodeUri: lambdas/deduplicator/
+      Handler: app.handler
+      Role: !GetAtt CollectorRole.Arn
+      Timeout: 60
+      Events:
+        SQSTrigger:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt DeduplicatorQueue.Arn
+            BatchSize: 10
+
+# ─────────────────────────────────────────
+# API Gateway + Lambda
+# ─────────────────────────────────────────
+  HackathonApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: hackathon-api
+      StageName: v1
+      Cors:
+        AllowMethods: "'GET,OPTIONS'"
+        AllowHeaders: "'Content-Type'"
+        AllowOrigin: "'*'"
+
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: hackathon-api
+      CodeUri: lambdas/api/
+      Handler: app.handler
+      Role: !GetAtt CollectorRole.Arn
+      Timeout: 10
+      MemorySize: 128
+      Events:
+        ListHackathons:
+          Type: Api
+          Properties:
+            RestApiId: !Ref HackathonApi
+            Path: /hackathons
+            Method: GET
+        GetHackathon:
+          Type: Api
+          Properties:
+            RestApiId: !Ref HackathonApi
+            Path: /hackathons/{source_id}
+            Method: GET
+        Options:
+          Type: Api
+          Properties:
+            RestApiId: !Ref HackathonApi
+            Path: /hackathons
+            Method: OPTIONS
+
+# ─────────────────────────────────────────
+# Outputs
+# ─────────────────────────────────────────
+Outputs:
+  HackathonsTableName:
+    Value: !Ref HackathonsTable
+  ScraperQueueUrl:
+    Value: !Ref ScraperQueue
+  BedrockQueueUrl:
+    Value: !Ref BedrockQueue
+  ApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value: !Sub "https://${HackathonApi}.execute-api.${AWS::Region}.amazonaws.com/v1"
