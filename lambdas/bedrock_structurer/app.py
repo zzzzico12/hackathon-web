@@ -92,7 +92,7 @@ def extract_with_bedrock(url: str, title: str, content: str) -> dict | None:
         text = text.strip("```json").strip("```").strip()
         start = text.find("{")
         end = text.rfind("}") + 1
-        if start == -1 or end == 0:
+        if start == -1 or end == 0 or start >= end:
             return None
         return json.loads(text[start:end])
     except Exception as e:
