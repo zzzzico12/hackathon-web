@@ -1,8 +1,19 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import { fetchHackathons } from "@/lib/api";
 import { HackathonCard } from "@/components/HackathonCard";
 import { FilterBar } from "@/components/FilterBar";
 import type { FilterParams, Status, PrizeBucket } from "@/lib/types";
+
+export const metadata: Metadata = {
+  title: "Hackathon Japan | 日本のハッカソンまとめ",
+  description: "日本で開催されるハッカソンを自動収集。賞金・テーマ・オンライン/オフライン・初心者向けで絞り込み可能。",
+  openGraph: {
+    title: "Hackathon Japan",
+    description: "日本のハッカソン情報まとめサイト",
+    url: "https://hackathon.zzzzico.click",
+  },
+};
 
 interface SearchParamsProps {
   searchParams: Promise<{ [key: string]: string | undefined }>;

@@ -2,6 +2,12 @@ AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: Hackathon aggregation site - data collection pipeline
 
+Parameters:
+  AlertEmail:
+    Type: String
+    Default: f505popj@gmail.com
+    Description: DLQ alarm notification email
+
 Globals:
   Function:
     Runtime: python3.11
@@ -200,6 +206,32 @@ Resources:
                   - bedrock:InvokeModel
                 Resource: "*"
 
+  # ステータス更新系: UPCOMING→PAST のみ
+  StatusUpdaterRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: status-updater-policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:Query
+                  - dynamodb:UpdateItem
+                Resource:
+                  - !GetAtt HackathonsTable.Arn
+                  - !Sub "${HackathonsTable.Arn}/index/*"
+
   # API系: DynamoDB読み取りのみ（書き込み不可）
   ApiRole:
     Type: AWS::IAM::Role
@@ -295,6 +327,21 @@ Resources:
             ScheduleExpression: "cron(0 22 ? * MON *)"   # JST 月曜 07:00
             ScheduleExpressionTimezone: UTC
 
+  StatusUpdaterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: hackathon-status-updater
+      CodeUri: lambdas/status_updater/
+      Handler: app.handler
+      Role: !GetAtt StatusUpdaterRole.Arn
+      Timeout: 60
+      Events:
+        DailySchedule:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: "cron(30 21 * * ? *)"   # JST 06:30
+            ScheduleExpressionTimezone: UTC
+
   ScraperFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -386,6 +433,55 @@ Resources:
             RestApiId: !Ref HackathonApi
             Path: /hackathons
             Method: OPTIONS
+
+# ─────────────────────────────────────────
+# SNS + CloudWatch Alarms（DLQ監視）
+# ─────────────────────────────────────────
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: hackathon-alerts
+      Subscription:
+        - Protocol: email
+          Endpoint: !Ref AlertEmail
+
+  ScraperDLQAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: hackathon-scraper-dlq-not-empty
+      AlarmDescription: ScraperDLQ にメッセージが溜まっています
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt ScraperDLQ.QueueName
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlertTopic
+
+  BedrockDLQAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: hackathon-bedrock-dlq-not-empty
+      AlarmDescription: BedrockDLQ にメッセージが溜まっています
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt BedrockDLQ.QueueName
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlertTopic
 
 # ─────────────────────────────────────────
 # Outputs

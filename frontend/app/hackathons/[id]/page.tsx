@@ -1,9 +1,25 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { fetchHackathon, formatDate, formatPrize } from "@/lib/api";
 
 interface Props {
   params: Promise<{ id: string }>;
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params;
+  const h = await fetchHackathon(decodeURIComponent(id)).catch(() => null);
+  if (!h) return { title: "Not Found" };
+  return {
+    title: `${h.title} | Hackathon Japan`,
+    description: h.description ?? `${h.title} の詳細情報`,
+    openGraph: {
+      title: h.title,
+      description: h.description ?? undefined,
+      url: `https://hackathon.zzzzico.click/hackathons/${id}`,
+    },
+  };
 }
 
 export default async function HackathonDetail({ params }: Props) {
@@ -12,6 +28,10 @@ export default async function HackathonDetail({ params }: Props) {
 
   const h = await fetchHackathon(sourceId).catch(() => null);
   if (!h) notFound();
+
+  const dateRange = h.end_date
+    ? `${formatDate(h.start_date)} 〜 ${formatDate(h.end_date)}`
+    : formatDate(h.start_date);
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -26,9 +46,18 @@ export default async function HackathonDetail({ params }: Props) {
       <div className="max-w-3xl mx-auto px-4 py-8">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-6">
           <div>
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex flex-wrap items-center gap-2 mb-2">
               <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
                 {h.source_name}
+              </span>
+              <span
+                className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                  h.status === "UPCOMING"
+                    ? "bg-emerald-50 text-emerald-700"
+                    : "bg-gray-100 text-gray-500"
+                }`}
+              >
+                {h.status === "UPCOMING" ? "開催予定" : "開催済み"}
               </span>
               {h.is_beginner_friendly && (
                 <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-green-50 text-green-700">
@@ -40,7 +69,7 @@ export default async function HackathonDetail({ params }: Props) {
           </div>
 
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-            <InfoRow label="開催日" value={`${formatDate(h.start_date)} 〜 ${formatDate(h.end_date)}`} />
+            <InfoRow label="開催日" value={dateRange} />
             {h.entry_deadline && (
               <InfoRow label="応募締切" value={formatDate(h.entry_deadline)} />
             )}
@@ -76,14 +105,16 @@ export default async function HackathonDetail({ params }: Props) {
             </div>
           )}
 
-          <a
-            href={h.source_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block w-full text-center px-6 py-3 rounded-full bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors"
-          >
-            公式サイトで詳細を見る →
-          </a>
+          {h.source_url && (
+            <a
+              href={h.source_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block w-full text-center px-6 py-3 rounded-full bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors"
+            >
+              公式サイトで詳細を見る →
+            </a>
+          )}
         </div>
       </div>
     </main>
