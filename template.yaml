@@ -5,8 +5,7 @@ Description: Hackathon aggregation site - data collection pipeline
 Parameters:
   AlertEmail:
     Type: String
-    Default: f505popj@gmail.com
-    Description: DLQ alarm notification email
+    Description: DLQ alarm notification email (set in samconfig.toml)
 
 Globals:
   Function:

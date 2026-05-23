@@ -16,3 +16,4 @@ frontend/.env.local
 # Secrets
 local-env.json
 *.env
+samconfig.toml
