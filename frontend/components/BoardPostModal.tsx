@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Star } from "lucide-react";
+import { Star, MessageCircle } from "lucide-react";
 import { fetchAuthSession } from "aws-amplify/auth";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/v1";
@@ -34,7 +34,6 @@ export interface BoardItem {
   rating?: number;
   skills?: string[];
   wants?: string[];
-  contact?: string;
 }
 
 function SkillSelector({
@@ -73,22 +72,27 @@ export function BoardPostModal({
   sourceId,
   hackathonTitle,
   displayName,
+  editItem,
   onClose,
   onSuccess,
+  onUpdated,
 }: {
   type: "TEAM" | "REPORT";
   sourceId: string;
   hackathonTitle: string;
   displayName: string | null;
+  editItem?: BoardItem;
   onClose: () => void;
-  onSuccess: (item: BoardItem) => void;
+  onSuccess?: (item: BoardItem) => void;
+  onUpdated?: (sk: string, patch: Partial<BoardItem>) => void;
 }) {
-  const [body, setBody] = useState("");
-  const [rating, setRating] = useState(0);
+  const isEdit = !!editItem;
+
+  const [body, setBody] = useState(editItem?.body ?? "");
+  const [rating, setRating] = useState(editItem?.rating ?? 0);
   const [hoverRating, setHoverRating] = useState(0);
-  const [skills, setSkills] = useState<string[]>([]);
-  const [wants, setWants] = useState<string[]>([]);
-  const [contact, setContact] = useState("");
+  const [skills, setSkills] = useState<string[]>(editItem?.skills ?? []);
+  const [wants, setWants] = useState<string[]>(editItem?.wants ?? []);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -104,6 +108,29 @@ export function BoardPostModal({
     setError("");
     try {
       const token = await getToken();
+
+      if (isEdit && editItem) {
+        const patch: Record<string, unknown> = { body: body.trim() };
+        if (type === "REPORT" && rating > 0) patch.rating = rating;
+        if (type === "TEAM") { patch.skills = skills; patch.wants = wants; }
+
+        const res = await fetch(
+          `${API}/hackathons/${encodeURIComponent(sourceId)}/board/${encodeURIComponent(editItem.SK)}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify(patch),
+          }
+        );
+        if (!res.ok) { setError("更新に失敗しました"); setSubmitting(false); return; }
+        onUpdated?.(editItem.SK, { body: body.trim(), ...(type === "REPORT" && rating > 0 ? { rating } : {}), ...(type === "TEAM" ? { skills, wants } : {}) });
+        onClose();
+        return;
+      }
+
       const payload: Record<string, unknown> = {
         type,
         body: body.trim(),
@@ -111,11 +138,7 @@ export function BoardPostModal({
         hackathon_title: hackathonTitle,
       };
       if (type === "REPORT" && rating > 0) payload.rating = rating;
-      if (type === "TEAM") {
-        payload.skills = skills;
-        payload.wants = wants;
-        if (contact.trim()) payload.contact = contact.trim();
-      }
+      if (type === "TEAM") { payload.skills = skills; payload.wants = wants; }
 
       const res = await fetch(
         `${API}/hackathons/${encodeURIComponent(sourceId)}/board`,
@@ -128,13 +151,9 @@ export function BoardPostModal({
           body: JSON.stringify(payload),
         }
       );
-      if (!res.ok) {
-        setError("投稿に失敗しました");
-        setSubmitting(false);
-        return;
-      }
+      if (!res.ok) { setError("投稿に失敗しました"); setSubmitting(false); return; }
       const { SK } = await res.json();
-      onSuccess({
+      onSuccess?.({
         hackathon_source_id: sourceId,
         SK,
         board_type: type,
@@ -142,7 +161,7 @@ export function BoardPostModal({
         body: body.trim(),
         created_at: new Date().toISOString(),
         ...(type === "REPORT" && rating > 0 ? { rating } : {}),
-        ...(type === "TEAM" ? { skills, wants, contact: contact.trim() } : {}),
+        ...(type === "TEAM" ? { skills, wants } : {}),
       });
     } catch {
       setError("エラーが発生しました");
@@ -161,7 +180,9 @@ export function BoardPostModal({
       >
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-gray-900">
-            {type === "TEAM" ? "チーム募集を投稿" : "参加レポートを投稿"}
+            {isEdit
+              ? type === "TEAM" ? "チーム募集を編集" : "参加レポートを編集"
+              : type === "TEAM" ? "チーム募集を投稿" : "参加レポートを投稿"}
           </h2>
           <button
             onClick={onClose}
@@ -227,14 +248,13 @@ export function BoardPostModal({
           className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 resize-none focus:outline-none focus:ring-2 focus:ring-blue-300"
         />
 
-        {type === "TEAM" && (
-          <input
-            type="text"
-            value={contact}
-            onChange={(e) => setContact(e.target.value)}
-            placeholder="連絡先（Twitter/Discord など、任意）"
-            className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-300"
-          />
+        {type === "TEAM" && !isEdit && (
+          <div className="flex items-start gap-2 rounded-xl bg-blue-50 px-3 py-2.5">
+            <MessageCircle size={15} className="text-blue-400 mt-0.5 shrink-0" />
+            <p className="text-xs text-blue-600 leading-relaxed">
+              チームメンバーへのコンタクトには、投稿への返信またはDM機能をご利用ください。
+            </p>
+          </div>
         )}
 
         {error && <p className="text-xs text-red-500">{error}</p>}
@@ -244,7 +264,7 @@ export function BoardPostModal({
           disabled={!body.trim() || submitting}
           className="w-full py-2.5 rounded-full bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-40 transition-colors"
         >
-          {submitting ? "投稿中..." : "投稿する"}
+          {submitting ? (isEdit ? "保存中..." : "投稿中...") : (isEdit ? "保存する" : "投稿する")}
         </button>
       </div>
     </div>

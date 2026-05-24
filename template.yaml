@@ -626,7 +626,7 @@ Resources:
       Name: hackathon-api
       StageName: v1
       Cors:
-        AllowMethods: "'GET,POST,DELETE,OPTIONS'"
+        AllowMethods: "'GET,POST,DELETE,PATCH,OPTIONS'"
         AllowHeaders: "'Content-Type,Authorization'"
         AllowOrigin: "'https://hackathon.zzzzico.click'"
       Auth:
@@ -762,6 +762,14 @@ Resources:
             RestApiId: !Ref HackathonApi
             Path: /hackathons/{source_id}/board/{sk}
             Method: DELETE
+            Auth:
+              Authorizer: CognitoAuthorizer
+        PatchItem:
+          Type: Api
+          Properties:
+            RestApiId: !Ref HackathonApi
+            Path: /hackathons/{source_id}/board/{sk}
+            Method: PATCH
             Auth:
               Authorizer: CognitoAuthorizer
 

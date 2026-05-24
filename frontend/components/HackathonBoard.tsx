@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Star, Users } from "lucide-react";
+import { Pencil, Star, Users } from "lucide-react";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { useAuth } from "@/lib/useAuth";
 import { BoardPostModal, type BoardItem } from "@/components/BoardPostModal";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/v1";
 
@@ -71,7 +72,8 @@ function ThreadCard({
   currentUserId,
   displayName,
   sourceId,
-  onDelete,
+  onDeleteRequest,
+  onEditRequest,
   onReplyPosted,
 }: {
   thread: Thread;
@@ -79,7 +81,8 @@ function ThreadCard({
   currentUserId: string | null;
   displayName: string | null;
   sourceId: string;
-  onDelete: (sk: string) => void;
+  onDeleteRequest: (sk: string) => void;
+  onEditRequest: (item: BoardItem) => void;
   onReplyPosted: (reply: BoardItem) => void;
 }) {
   const { post, replies } = thread;
@@ -128,7 +131,7 @@ function ThreadCard({
     }
   };
 
-  const canDeletePost = currentUserId && post.SK.endsWith(`#${currentUserId}`);
+  const isOwnPost = currentUserId && post.SK.endsWith(`#${currentUserId}`);
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
@@ -137,16 +140,25 @@ function ThreadCard({
         <span className="text-xs font-semibold text-gray-700">
           {post.display_name || "匿名"}
         </span>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0">
           <span className="text-xs text-gray-400">{timeAgo(post.created_at)}</span>
-          {canDeletePost && (
-            <button
-              onClick={() => onDelete(post.SK)}
-              className="text-xs text-gray-300 hover:text-red-400 transition-colors leading-none"
-              title="削除"
-            >
-              ✕
-            </button>
+          {isOwnPost && (
+            <>
+              <button
+                onClick={() => onEditRequest(post)}
+                className="text-gray-300 hover:text-blue-400 transition-colors leading-none"
+                title="編集"
+              >
+                <Pencil size={13} />
+              </button>
+              <button
+                onClick={() => onDeleteRequest(post.SK)}
+                className="text-xs text-gray-300 hover:text-red-400 transition-colors leading-none"
+                title="削除"
+              >
+                ✕
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -180,15 +192,11 @@ function ThreadCard({
 
       <p className="text-sm text-gray-700 leading-relaxed">{post.body}</p>
 
-      {post.contact && (
-        <p className="text-xs text-gray-400 mt-1.5">📨 {post.contact}</p>
-      )}
-
       {/* Replies */}
       {replies.length > 0 && (
         <div className="mt-3 space-y-2.5 border-l-2 border-gray-100 pl-3.5">
           {replies.map((reply) => {
-            const canDeleteReply = currentUserId && reply.SK.endsWith(`#${currentUserId}`);
+            const isOwnReply = currentUserId && reply.SK.endsWith(`#${currentUserId}`);
             return (
               <div key={reply.SK}>
                 <div className="flex items-center justify-between gap-2 mb-0.5">
@@ -197,14 +205,23 @@ function ThreadCard({
                   </span>
                   <div className="flex items-center gap-1.5 shrink-0">
                     <span className="text-xs text-gray-400">{timeAgo(reply.created_at)}</span>
-                    {canDeleteReply && (
-                      <button
-                        onClick={() => onDelete(reply.SK)}
-                        className="text-xs text-gray-300 hover:text-red-400 transition-colors leading-none"
-                        title="削除"
-                      >
-                        ✕
-                      </button>
+                    {isOwnReply && (
+                      <>
+                        <button
+                          onClick={() => onEditRequest(reply)}
+                          className="text-gray-300 hover:text-blue-400 transition-colors"
+                          title="編集"
+                        >
+                          <Pencil size={12} />
+                        </button>
+                        <button
+                          onClick={() => onDeleteRequest(reply.SK)}
+                          className="text-xs text-gray-300 hover:text-red-400 transition-colors leading-none"
+                          title="削除"
+                        >
+                          ✕
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -237,10 +254,7 @@ function ThreadCard({
                   送信
                 </button>
                 <button
-                  onClick={() => {
-                    setShowReply(false);
-                    setReplyText("");
-                  }}
+                  onClick={() => { setShowReply(false); setReplyText(""); }}
                   className="text-xs text-gray-400 hover:text-gray-600 text-center"
                 >
                   キャンセル
@@ -273,6 +287,8 @@ export function HackathonBoard({
   const [items, setItems] = useState<BoardItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showPostModal, setShowPostModal] = useState(false);
+  const [editingItem, setEditingItem] = useState<BoardItem | null>(null);
+  const [deletingsk, setDeletingsk] = useState<string | null>(null);
 
   const fetchItems = useCallback(
     async (t: TabType) => {
@@ -298,7 +314,6 @@ export function HackathonBoard({
   const threads = useMemo<Thread[]>(() => {
     const parents = items.filter((i) => !i.parent_sk);
     const replies = items.filter((i) => i.parent_sk);
-    // Show newest threads first
     const sorted = [...parents].sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
@@ -308,8 +323,10 @@ export function HackathonBoard({
     }));
   }, [items]);
 
-  const handleDelete = async (sk: string) => {
-    if (!window.confirm("この投稿を削除しますか？")) return;
+  const confirmDelete = async () => {
+    if (!deletingsk) return;
+    const sk = deletingsk;
+    setDeletingsk(null);
     const token = await getToken();
     const res = await fetch(
       `${API}/hackathons/${encodeURIComponent(sourceId)}/board/${encodeURIComponent(sk)}`,
@@ -331,6 +348,16 @@ export function HackathonBoard({
     setItems((prev) => [newItem, ...prev]);
     setShowPostModal(false);
   };
+
+  const handleUpdated = (sk: string, patch: Partial<BoardItem>) => {
+    setItems((prev) => prev.map((i) => i.SK === sk ? { ...i, ...patch } : i));
+  };
+
+  const editType = editingItem
+    ? (editingItem.board_type === "REPLY"
+        ? (tab === "team" ? "TEAM" : "REPORT")
+        : (editingItem.board_type as "TEAM" | "REPORT"))
+    : (tab === "team" ? "TEAM" : "REPORT");
 
   return (
     <div className="mt-8">
@@ -398,7 +425,8 @@ export function HackathonBoard({
               currentUserId={user?.userId ?? null}
               displayName={name}
               sourceId={sourceId}
-              onDelete={handleDelete}
+              onDeleteRequest={setDeletingsk}
+              onEditRequest={setEditingItem}
               onReplyPosted={handleReplyPosted}
             />
           ))}
@@ -413,6 +441,27 @@ export function HackathonBoard({
           displayName={name}
           onClose={() => setShowPostModal(false)}
           onSuccess={handlePostSuccess}
+        />
+      )}
+
+      {editingItem && (
+        <BoardPostModal
+          type={editType}
+          sourceId={sourceId}
+          hackathonTitle={title}
+          displayName={name}
+          editItem={editingItem}
+          onClose={() => setEditingItem(null)}
+          onUpdated={handleUpdated}
+        />
+      )}
+
+      {deletingsk && (
+        <ConfirmDialog
+          message="この投稿を削除しますか？"
+          subMessage="削除した投稿は元に戻せません。"
+          onConfirm={confirmDelete}
+          onCancel={() => setDeletingsk(null)}
         />
       )}
     </div>

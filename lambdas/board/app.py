@@ -14,7 +14,7 @@ table = dynamodb.Table(TABLE_NAME)
 CORS = {
     "Access-Control-Allow-Origin": "https://hackathon.zzzzico.click",
     "Access-Control-Allow-Headers": "Content-Type,Authorization",
-    "Access-Control-Allow-Methods": "GET,POST,DELETE,OPTIONS",
+    "Access-Control-Allow-Methods": "GET,POST,DELETE,PATCH,OPTIONS",
 }
 
 VALID_TYPES = {"REPORT", "TEAM"}
@@ -61,6 +61,8 @@ def handler(event, _ctx):
             sk = unquote(parts[1])
             if method == "DELETE":
                 return delete_item(event, hackathon_id, sk)
+            if method == "PATCH":
+                return patch_item(event, hackathon_id, sk)
 
     return resp(404, {"error": "not found"})
 
@@ -159,6 +161,47 @@ def post_item(event, hackathon_id):
 
     table.put_item(Item=item)
     return resp(201, {"SK": sk})
+
+
+def patch_item(event, hackathon_id, sk):
+    user_id = get_user_id(event)
+    if not sk.endswith(f"#{user_id}"):
+        return resp(403, {"error": "forbidden"})
+
+    result = table.get_item(Key={"hackathon_source_id": hackathon_id, "SK": sk})
+    if "Item" not in result:
+        return resp(404, {"error": "not found"})
+
+    try:
+        body = json.loads(event.get("body") or "{}")
+    except json.JSONDecodeError:
+        return resp(400, {"error": "invalid JSON"})
+
+    content = body.get("body", "").strip()
+    if not content:
+        return resp(400, {"error": "body is required"})
+
+    update_expr = "SET #b = :body"
+    expr_names = {"#b": "body"}
+    expr_vals = {":body": content}
+
+    if "rating" in body:
+        expr_vals[":rating"] = max(1, min(5, int(body["rating"])))
+        update_expr += ", rating = :rating"
+    if "skills" in body:
+        expr_vals[":skills"] = body["skills"]
+        update_expr += ", skills = :skills"
+    if "wants" in body:
+        expr_vals[":wants"] = body["wants"]
+        update_expr += ", wants = :wants"
+
+    table.update_item(
+        Key={"hackathon_source_id": hackathon_id, "SK": sk},
+        UpdateExpression=update_expr,
+        ExpressionAttributeNames=expr_names,
+        ExpressionAttributeValues=expr_vals,
+    )
+    return resp(200, {"SK": sk})
 
 
 def delete_item(event, hackathon_id, sk):
