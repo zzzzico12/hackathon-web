@@ -1,9 +1,11 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 interface Props {
   active: boolean;
   onClick: () => void;
-  icon: string;
+  icon: ReactNode;
   label: string;
   activeLabel?: string;
   activeClass?: string;
@@ -26,7 +28,7 @@ export function ActionButton({
           : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50"
       }`}
     >
-      <span>{icon}</span>
+      {icon}
       <span>{active ? (activeLabel ?? label) : label}</span>
     </button>
   );
