@@ -66,6 +66,19 @@ export default async function Home({ searchParams }: SearchParamsProps) {
   );
 }
 
+function formatDataUpdatedAt(items: { updated_at?: string }[]): string | null {
+  const dates = items.map((i) => i.updated_at).filter(Boolean) as string[];
+  if (dates.length === 0) return null;
+  const latest = new Date(dates.reduce((a, b) => (a > b ? a : b)));
+  return latest.toLocaleString("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    month: "narrow",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }) + " 更新";
+}
+
 async function HackathonTab({
   params,
   sp,
@@ -79,9 +92,16 @@ async function HackathonTab({
     next_token: null,
   }));
 
+  const updatedAt = formatDataUpdatedAt(data.items);
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-6">
-      <p className="text-sm text-gray-500 mb-4">{data.count} 件表示</p>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-sm text-gray-500">{data.count} 件表示</p>
+        {updatedAt && (
+          <p className="text-xs text-gray-400">データ: {updatedAt}</p>
+        )}
+      </div>
 
       {data.items.length === 0 ? (
         <div className="text-center py-20 text-gray-400">

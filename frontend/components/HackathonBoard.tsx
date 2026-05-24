@@ -309,6 +309,7 @@ export function HackathonBoard({
   }, [items]);
 
   const handleDelete = async (sk: string) => {
+    if (!window.confirm("この投稿を削除しますか？")) return;
     const token = await getToken();
     const res = await fetch(
       `${API}/hackathons/${encodeURIComponent(sourceId)}/board/${encodeURIComponent(sk)}`,
