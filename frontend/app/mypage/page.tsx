@@ -55,7 +55,8 @@ const SECTIONS: {
 export default function MyPage() {
   const { user, loading: authLoading, signIn } = useAuth();
   const userData = useUserData(!!user);
-  const [hackathons, setHackathons] = useState<Record<string, Hackathon>>({});
+  // null = fetch attempted but hackathon no longer exists
+  const [hackathons, setHackathons] = useState<Record<string, Hackathon | null>>({});
 
   useEffect(() => {
     if (!user || userData.loading) return;
@@ -65,7 +66,7 @@ export default function MyPage() {
       ...userData.APPLIED,
       ...userData.NOTES.keys(),
     ]);
-    const missing = [...allIds].filter((id) => !hackathons[id]);
+    const missing = [...allIds].filter((id) => !(id in hackathons));
     if (!missing.length) return;
 
     Promise.all(
@@ -73,7 +74,7 @@ export default function MyPage() {
     ).then((results) => {
       setHackathons((prev) => {
         const next = { ...prev };
-        for (const { id, h } of results) if (h) next[id] = h;
+        for (const { id, h } of results) next[id] = h; // null stored for 404s
         return next;
       });
     });
@@ -174,16 +175,28 @@ export default function MyPage() {
                 </span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {ids.map((id) =>
-                  hackathons[id] ? (
-                    <HackathonCard key={id} hackathon={hackathons[id]} />
-                  ) : (
-                    <div
-                      key={id}
-                      className="bg-white rounded-2xl border border-gray-100 p-4 animate-pulse h-32"
-                    />
-                  )
-                )}
+                {ids.map((id) => {
+                  const h = hackathons[id];
+                  if (h === undefined) {
+                    // Not yet fetched — show skeleton
+                    return <div key={id} className="bg-white rounded-2xl border border-gray-100 p-4 animate-pulse h-32" />;
+                  }
+                  if (h === null) {
+                    // Fetched but no longer in listing — show archived stub
+                    return (
+                      <div key={id} className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+                          <FileText size={14} className="text-gray-400" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-gray-500">終了・掲載終了</p>
+                          <p className="text-xs text-gray-400 mt-0.5 break-all">{id}</p>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return <HackathonCard key={id} hackathon={h} />;
+                })}
               </div>
             </section>
           );
