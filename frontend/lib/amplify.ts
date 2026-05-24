@@ -14,7 +14,7 @@ Amplify.configure({
       loginWith: {
         oauth: {
           domain,
-          scopes: ["openid", "profile"],
+          scopes: ["openid", "profile", "aws.cognito.signin.user.admin"],
           redirectSignIn: [
             "https://hackathon.zzzzico.click/auth/callback",
             "http://localhost:3000/auth/callback",

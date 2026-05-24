@@ -211,6 +211,7 @@ Resources:
       AllowedOAuthScopes:
         - openid
         - profile
+        - aws.cognito.signin.user.admin
       AllowedOAuthFlowsUserPoolClient: true
       WriteAttributes:
         - custom:display_name
