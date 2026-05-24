@@ -7,8 +7,10 @@ import boto3
 from boto3.dynamodb.conditions import Key
 
 TABLE_NAME = os.environ["USER_DATA_TABLE"]
+AVATAR_BUCKET = os.environ.get("AVATAR_BUCKET", "")
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(TABLE_NAME)
+s3 = boto3.client("s3")
 
 VALID_TYPES = {"FAV", "DONE", "APPLIED", "NOTE"}
 CORS = {
@@ -35,6 +37,9 @@ def handler(event, _ctx):
 
     if path == "/user/me":
         return get_me(event)
+    if path == "/user/avatar/presign":
+        if method == "POST":
+            return presign_avatar(event)
     if path == "/user/data":
         if method == "GET":
             return get_all(event)
@@ -105,6 +110,18 @@ def delete_action(event):
 
     table.delete_item(Key={"user_id": user_id, "SK": sk})
     return resp(200, {"deleted": sk})
+
+
+def presign_avatar(event):
+    user_id = get_user_id(event)
+    key = f"avatars/{user_id}/avatar.jpg"
+    upload_url = s3.generate_presigned_url(
+        "put_object",
+        Params={"Bucket": AVATAR_BUCKET, "Key": key},
+        ExpiresIn=300,
+    )
+    avatar_url = f"https://{AVATAR_BUCKET}.s3.ap-northeast-1.amazonaws.com/{key}"
+    return resp(200, {"upload_url": upload_url, "avatar_url": avatar_url})
 
 
 def get_me(event):

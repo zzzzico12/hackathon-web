@@ -99,6 +99,37 @@ Resources:
         - AttributeName: SK
           KeyType: RANGE
 
+  AvatarBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "hackathon-avatars-${AWS::AccountId}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ["*"]
+            AllowedMethods: [GET, PUT]
+            AllowedOrigins:
+              - "https://hackathon.zzzzico.click"
+              - "http://localhost:3000"
+            ExposedHeaders: [ETag]
+            MaxAge: 3600
+
+  AvatarBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref AvatarBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action: s3:GetObject
+            Resource: !Sub "arn:aws:s3:::${AvatarBucket}/*"
+
 # ─────────────────────────────────────────
 # Cognito（Google Sign-In のみ、メール取得なし）
 # ─────────────────────────────────────────
@@ -348,6 +379,11 @@ Resources:
                   - dynamodb:Query
                 Resource:
                   - !GetAtt UserDataTable.Arn
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${AvatarBucket}/*"
 
   # API系: DynamoDB読み取りのみ（書き込み不可）
   ApiRole:
@@ -581,6 +617,7 @@ Resources:
       Environment:
         Variables:
           USER_DATA_TABLE: !Ref UserDataTable
+          AVATAR_BUCKET: !Ref AvatarBucket
       Events:
         GetAll:
           Type: Api
@@ -612,6 +649,14 @@ Resources:
             RestApiId: !Ref HackathonApi
             Path: /user/me
             Method: GET
+            Auth:
+              Authorizer: CognitoAuthorizer
+        AvatarPresign:
+          Type: Api
+          Properties:
+            RestApiId: !Ref HackathonApi
+            Path: /user/avatar/presign
+            Method: POST
             Auth:
               Authorizer: CognitoAuthorizer
 
@@ -686,3 +731,6 @@ Outputs:
   CognitoDomain:
     Description: Cognito Hosted UI domain (set as NEXT_PUBLIC_COGNITO_DOMAIN in Amplify)
     Value: !Sub "hackathon-zzzzico.auth.${AWS::Region}.amazoncognito.com"
+  AvatarBucketUrl:
+    Description: Avatar S3 base URL (set as NEXT_PUBLIC_AVATAR_BASE_URL in Amplify)
+    Value: !Sub "https://${AvatarBucket}.s3.${AWS::Region}.amazonaws.com"
