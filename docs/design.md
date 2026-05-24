@@ -1,8 +1,10 @@
-# パーソナライズ機能 追加計画（認証 + DynamoDB）
+# パーソナライズ・コミュニティ機能 追加計画（認証 + DynamoDB）
 
 ## Context
 
-ハッカソン一覧ページの基本機能は整っているが、ユーザーが繰り返し訪れる理由（リテンション）が不足している。localStorage はブラウザ削除で消えるため、**Google Sign-In（Cognito）+ DynamoDB** でお気に入りをサーバー側に永続化する。合わせて締め切りカウントダウンとカレンダー追加機能も追加する。
+ハッカソン一覧ページの基本機能は整っているが、ユーザーが繰り返し訪れる理由（リテンション）が不足している。localStorage はブラウザ削除で消えるため、**Google Sign-In（Cognito）+ DynamoDB** でお気に入りをサーバー側に永続化する。合わせて、Qiita/note の参加レポート集約とチームメンバー募集掲示板でコミュニティ価値を高める。
+
+**プライバシー方針**: メールアドレスは取得しない（Cognito scope: `openid profile` のみ）。ユーザー識別は Cognito sub のみ。
 
 ## 機能区分
 
@@ -11,8 +13,12 @@
 - ハッカソン詳細閲覧
 - 締め切りカウントダウン表示
 - カレンダー追加（.ics ダウンロード）
+- **参加レポート・口コミ閲覧**（Qiita/note 記事集約）
+- **チームメンバー募集一覧閲覧**
 
 ### 認証必須（ユーザー登録を促す機能）
+
+#### マイページで管理する個人機能
 | # | 機能 | 概要 | 訴求ポイント |
 |---|------|------|------------|
 | 1 | **Google ログイン** | Cognito + Google OAuth | 1クリック登録 |
@@ -20,8 +26,15 @@
 | 3 | **参加予定** | 📅 参加するハッカソンを登録 | スケジュール管理 |
 | 4 | **応募済みマーク** | ✅ 応募完了した記録 | 参加履歴管理 |
 | 5 | **個人メモ** | 📝 ハッカソンごとのメモ | チームメモ・アイデア管理 |
-| 6 | **締め切りメールリマインダー** | 締め切り前日にメール通知 | 見逃し防止 |
-| 7 | **マイページ** | 📊 登録数・参加予定数・履歴 | 活動の可視化 |
+
+> 詳細ページにクイックアクションボタンを配置するが、一覧・管理は **マイページ** を主体とする。
+
+#### コミュニティ機能
+| # | 機能 | 概要 | 訴求ポイント |
+|---|------|------|------------|
+| 6 | **掲示板（口コミ + チーム募集）** | タブ切替式。口コミ書き込み・チーム募集投稿 | 生の情報とチーム結成 |
+| 7 | **DM（ダイレクトメッセージ）** | チーム募集投稿者へのメッセージ送受信 | スムーズなチームビルディング |
+| 8 | **マイページ** | お気に入り/参加予定/応募済み/メモ の一覧管理 + 受信DM | 活動の一元管理 |
 
 ## アーキテクチャ
 
@@ -46,22 +59,66 @@ Google Cloud Console での OAuth アプリ作成が必要（SAM では自動化
    - `/hackathon/google_client_id`
    - `/hackathon/google_client_secret`
 
-## DynamoDB スキーマ（ユーザーデータ）
+## DynamoDB スキーマ
+
+### ユーザーデータテーブル（hackathon-user-data）
 
 シングルテーブル設計：複数アクションを1テーブルで管理
 
 ```
 Table: hackathon-user-data
-PK: user_id (HASH)   = Cognito sub
+PK: user_id (HASH)   = Cognito sub（メールアドレスは保持しない）
 SK: {TYPE}#{source_id} (RANGE)
-  TYPE: FAV（お気に入り）| PLAN（参加予定）| APPLIED（応募済み）| NOTE（メモ）
+  TYPE: FAV（お気に入り）| PLAN（参加予定）| APPLIED（応募済み）| NOTE（メモ）| RECRUIT（募集投稿）
 
 追加 attribute:
-  body: string        # NOTE の場合のみ（メモ本文）
+  body: string        # NOTE のメモ本文 / RECRUIT の自己紹介メッセージ
+  skills: list        # RECRUIT のみ: 提供スキル ["engineer", "designer", "pm"]
+  wants: list         # RECRUIT のみ: 求めるスキル
+  contact: string     # RECRUIT のみ: Twitter/Discord など（任意）
   created_at: string  # ISO8601
-  
-Email reminders 用:
-  user_email: user_id GSI は不要。SES 送信時は Cognito Admin API で email を取得。
+```
+
+### 掲示板テーブル（hackathon-board）
+
+口コミ投稿・チーム募集投稿・DM を管理するシングルテーブル
+
+```
+Table: hackathon-board
+PK: hackathon_source_id (HASH)  ← 口コミ・チーム募集の検索キー
+SK: {TYPE}#{created_at}#{user_id} (RANGE)
+  TYPE: REVIEW（口コミ）| RECRUIT（チーム募集）
+
+Attributes（共通）:
+  user_id: string        # Cognito sub
+  body: string           # 本文
+  created_at: string
+
+Attributes（REVIEW のみ）:
+  rating: number         # 1-5 の星評価
+  source: "user" | "qiita" | "note"  # user=サイト内投稿
+  external_url: string   # Qiita/note 記事の場合のみ
+  author_name: string    # Qiita/note 記事の場合のみ
+
+Attributes（RECRUIT のみ）:
+  skills: list           # 提供スキル ["engineer", "designer", "pm"]
+  wants: list            # 求めるスキル
+```
+
+### DMテーブル（hackathon-dm）
+
+```
+Table: hackathon-dm
+PK: receiver_user_id (HASH)   # 受信者の Cognito sub
+SK: {created_at}#{sender_user_id} (RANGE)
+
+Attributes:
+  sender_user_id: string
+  hackathon_source_id: string  # どのハッカソンのチーム募集から
+  recruit_sk: string           # 元の RECRUIT 投稿の SK
+  body: string
+  is_read: bool
+  created_at: string
 ```
 
 ## AWS リソース（追加分）
@@ -77,31 +134,59 @@ GoogleClientSecret:
   Type: AWS::SSM::Parameter::Value<String>
   Default: /hackathon/google_client_secret
 
-# Cognito
+# Cognito（scope: openid profile のみ、メール取得なし）
 UserPool / UserPoolGoogleIdP / UserPoolClient / UserPoolDomain
 
-# DynamoDB（シングルテーブル）
+# DynamoDB: ユーザーデータ
 UserDataTable:
   TableName: hackathon-user-data
   KeySchema: [{user_id: HASH}, {SK: RANGE}]
   BillingMode: PAY_PER_REQUEST
 
-# Lambda（ユーザーデータ CRUD）
+# DynamoDB: 掲示板（口コミ + チーム募集）
+BoardTable:
+  TableName: hackathon-board
+  KeySchema: [{hackathon_source_id: HASH}, {SK: RANGE}]
+  BillingMode: PAY_PER_REQUEST
+
+# DynamoDB: DM
+DmTable:
+  TableName: hackathon-dm
+  KeySchema: [{receiver_user_id: HASH}, {SK: RANGE}]
+  BillingMode: PAY_PER_REQUEST
+
+# Lambda: ユーザーデータ CRUD
 UserDataFunction:
   FunctionName: hackathon-user-data
   Timeout: 10, MemorySize: 128
   Events:
-    GetAll:   GET  /user/data           ← 全アクション取得（FAV/PLAN/APPLIED/NOTE）
-    PostAct:  POST /user/data           ← アクション追加（body: {type, source_id, body?}）
-    DeleteAct: DELETE /user/data/{sk}   ← アクション削除（SK = TYPE#source_id）
-    GetMyPage: GET /user/me             ← 統計取得（件数カウント）
+    GetAll:     GET    /user/data        ← 全アクション取得
+    PostAct:    POST   /user/data        ← アクション追加（FAV/PLAN/APPLIED/NOTE）
+    DeleteAct:  DELETE /user/data/{sk}   ← アクション削除
+    GetMyPage:  GET    /user/me          ← 統計（件数）+ 未読DM数
     すべて Cognito Authorizer 必須
 
-# Lambda（メールリマインダー）
-ReminderFunction:
-  FunctionName: hackathon-reminder
-  Schedule: cron(0 0 * * ? *)  # 毎日 JST 09:00
-  Role: ReminderRole（SES:SendEmail + DynamoDB:Scan + Cognito:AdminGetUser）
+# Lambda: 掲示板 API（口コミ + チーム募集）
+BoardFunction:
+  FunctionName: hackathon-board
+  Events:
+    List:   GET    /hackathons/{id}/board        ← 一覧（認証不要、?tab=review|recruit）
+    Post:   POST   /hackathons/{id}/board        ← 投稿（認証必須）
+    Delete: DELETE /hackathons/{id}/board/{sk}   ← 削除（本人のみ）
+
+# Lambda: DM API
+DmFunction:
+  FunctionName: hackathon-dm
+  Events:
+    Send:    POST /dm                  ← DM送信（認証必須）
+    Inbox:   GET  /dm/inbox            ← 受信一覧（認証必須）
+    MarkRead: PATCH /dm/{sk}/read      ← 既読更新（認証必須）
+
+# Lambda: 外部記事収集（Qiita/note → hackathon-board に REVIEW として保存）
+ExternalReviewCollector:
+  FunctionName: hackathon-review-collector
+  Schedule: cron(0 20 ? * SUN *)  # JST 日曜 05:00
+  Role: CollectorRole（BoardTable:PutItem）
 ```
 
 ### HackathonApi の変更
@@ -130,22 +215,52 @@ def get_user_id(event) -> str:
 
 # POST /user/data  body: {"type": "FAV", "source_id": "connpass#123", "body": "..."}
 # → PutItem: {user_id: sub, SK: "FAV#connpass#123", created_at: now, body?: "..."}
+# RECRUIT の場合: body に skills/wants/contact も含む
 
 # DELETE /user/data/{sk}   sk = "FAV#connpass%23123"（URL エンコード）
 # → DeleteItem: {user_id: sub, SK: unquote(sk)}
 
-# GET /user/me → Query counts per TYPE prefix (FAV/PLAN/APPLIED/NOTE)
+# GET /user/me → Query counts per TYPE prefix (FAV/PLAN/APPLIED/NOTE/RECRUIT)
 ```
 
-### lambdas/reminder/app.py（新規）
+### lambdas/board/app.py（新規）
 
 ```python
-# 毎日実行
-# 1. UserDataTable scan: SK begins_with("PLAN#")
-# 2. 対応する hackathon の entry_deadline を HackathonsTable から取得
-# 3. entry_deadline == tomorrow の場合:
-#    - Cognito AdminGetUser でメールアドレス取得
-#    - SES でリマインダーメール送信
+# GET /hackathons/{id}/board?tab=review|recruit
+# → BoardTable.query(PK=source_id, SK begins_with TYPE) → 新着順返却（認証不要）
+
+# POST /hackathons/{id}/board  body: {type: "REVIEW"|"RECRUIT", body, rating?, skills?, wants?}
+# → PutItem: {hackathon_source_id, SK: f"{TYPE}#{now}#{user_id}", ...}（認証必須）
+
+# DELETE /hackathons/{id}/board/{sk}
+# → SK の user_id 部分が claims["sub"] と一致する場合のみ DeleteItem
+```
+
+### lambdas/dm/app.py（新規）
+
+```python
+# POST /dm  body: {receiver_user_id, hackathon_source_id, recruit_sk, body}
+# → DmTable.put_item({receiver_user_id, SK: f"{now}#{sender_id}", ...})（認証必須）
+
+# GET /dm/inbox
+# → DmTable.query(PK=claims["sub"]) → 新着順（認証必須）
+
+# PATCH /dm/{sk}/read
+# → UpdateItem: is_read=True（本人のみ）
+```
+
+### lambdas/review_collector/app.py（新規）
+
+```python
+# Qiita API: GET https://qiita.com/api/v2/items?query=ハッカソン+参加してみた&per_page=100
+# note: RSS https://note.com/search?q=ハッカソン+参加してみた
+
+# 各記事のタイトル/本文でハッカソン名マッチング（Bedrock で source_id 推定）
+# → BoardTable.put_item(
+#     hackathon_source_id=matched_id,
+#     SK=f"REVIEW#{published_at}#external",
+#     source="qiita"|"note", external_url=url, author_name=author, body=snippet
+#   )  ConditionExpression で重複スキップ
 ```
 
 ## フロントエンド実装
@@ -178,6 +293,8 @@ frontend/
     DeadlineCountdown.tsx   # "use client" — 締め切りN日バッジ
     AddToCalendarButton.tsx # "use client" — .ics 生成ダウンロード
     NoteModal.tsx           # "use client" — メモ入力モーダル
+    HackathonBoard.tsx      # "use client" — タブ切替式掲示板（口コミ + チーム募集）
+    DmModal.tsx             # "use client" — DM送信モーダル
   app/
     auth/callback/page.tsx  # Amplify handleAuthRedirect
     mypage/page.tsx         # "use client" — 統計 + FAV/PLAN/APPLIED 一覧
@@ -189,7 +306,7 @@ frontend/
 |---------|---------|
 | `frontend/app/layout.tsx` | Amplify 初期化 + `AuthButton` をヘッダーに追加 |
 | `frontend/components/HackathonCard.tsx` | `ActionButton`（FAV）+ `DeadlineCountdown` を注入 |
-| `frontend/app/hackathons/[id]/page.tsx` | FAV/PLAN/APPLIED ボタン + `AddToCalendarButton` + `NoteModal` |
+| `frontend/app/hackathons/[id]/page.tsx` | FAV/PLAN/APPLIED ボタン + `AddToCalendarButton` + `NoteModal` + `HackathonBoard` |
 | `frontend/components/FilterBar.tsx` | `/mypage` ナビリンク追加 |
 
 ### useUserData.ts 設計
@@ -209,28 +326,75 @@ interface UserDataState {
 }
 ```
 
-### /mypage（マイページ）
+### /mypage（マイページ） — 個人機能の主体
 
 ```
 📊 マイページ
-  お気に入り: 12件  参加予定: 3件  応募済み: 7件
+  お気に入り: 12件  参加予定: 3件  応募済み: 7件  📬 未読DM: 2件
 
+─────────────────────────────
 📅 参加予定のハッカソン
-  [カード一覧]
+  [カード一覧（削除ボタン付き）]
 
 ❤ お気に入り
-  [カード一覧]
+  [カード一覧（削除ボタン付き）]
 
 ✅ 応募済み
-  [カード一覧]
+  [カード一覧（削除ボタン付き）]
+
+📝 メモあり
+  [ハッカソン名 + メモプレビュー一覧]
+
+📬 受信メッセージ（DM）
+  [送信者・ハッカソン名・本文プレビュー・既読/未読バッジ]
+─────────────────────────────
 ```
 
-### 詳細ページのアクションバー
+### 詳細ページのクイックアクションバー（ショートカット）
 
 ```
 [❤ お気に入り] [📅 参加予定] [✅ 応募済み] [📝 メモ] [📆 カレンダー追加]
-未ログイン → クリックで "Googleでログインしてお気に入り登録" モーダル
+未ログイン → クリックで "Googleでログインして管理する" モーダル
+
+※ 一覧・管理はマイページへ。ここでは ON/OFF トグルのみ。
 ```
+
+### HackathonBoard.tsx（タブ切替式掲示板）
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ [📝 参加レポート・口コミ] [👥 チームメンバー募集]   ← タブ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+【口コミタブ】 閲覧: 全員  投稿: ログインユーザー
+
+  ┌────────────────────────────────────────┐
+  │ ★★★★☆  サイト内投稿  @user123  3日前    │
+  │ 「初参加でしたが雰囲気よかった。移動費…」 [削除]│
+  └────────────────────────────────────────┘
+  ┌────────────────────────────────────────┐
+  │ [Qiita]  ハッカソンXに参加してみた！  @author │
+  │ 「雰囲気よかった。移動費は…」          1週間前 │
+  └────────────────────────────────────────┘
+  [+ 口コミを書く]  ← 未ログインはモーダル
+
+【チーム募集タブ】 閲覧: 全員  投稿・DM: ログインユーザー
+
+  [エンジニア] [デザイナー] [企画]  ← スキルフィルター
+
+  ┌────────────────────────────────────────┐
+  │ 提供: エンジニア  求む: デザイナー・企画    │
+  │ 「Webアプリ得意。AIテーマで探しています」  │
+  │                     2日前 [DMを送る] [削除]│
+  └────────────────────────────────────────┘
+  [+ 参加メンバーを募集する]  ← 未ログインはモーダル
+```
+
+### DmModal.tsx + マイページ DM 受信箱
+
+- 「DMを送る」クリック → DmModal: 本文入力 → POST /dm
+- マイページに「📬 受信メッセージ」セクション: 未読バッジ付き
+- 既読は PATCH /dm/{sk}/read で更新
 
 ### DeadlineCountdown.tsx（認証不要・全ユーザー向け）
 
@@ -248,13 +412,15 @@ SUMMARY / DESCRIPTION / LOCATION / URL
 
 ## 実装順序
 
-1. **Phase 1 — AWS インフラ**: Cognito + UserDataTable + UserDataFunction + ReminderFunction を SAM デプロイ
+1. **Phase 1 — AWS インフラ**: Cognito + UserDataTable + BoardTable + DmTable + 各 Lambda を SAM デプロイ
 2. **Phase 2 — 認証フロー**: Amplify 設定、`useAuth`、`AuthButton`、`/auth/callback`
 3. **Phase 3 — 認証不要機能**: `DeadlineCountdown`（カード）+ `AddToCalendarButton`（詳細）
 4. **Phase 4 — ユーザーデータ CRUD**: `useUserData`、`ActionButton`（FAV/PLAN/APPLIED）
-5. **Phase 5 — マイページ**: `/mypage` 統計 + 一覧
+5. **Phase 5 — マイページ**: `/mypage` 統計 + 一覧 + DM 受信箱
 6. **Phase 6 — メモ**: `NoteModal` + 詳細ページ統合
-7. **Phase 7 — メールリマインダー**: Reminder Lambda + SES 設定
+7. **Phase 7 — 掲示板（口コミ）**: BoardFunction Lambda + `HackathonBoard` 口コミタブ
+8. **Phase 8 — 掲示板（チーム募集 + DM）**: BoardFunction チーム募集タブ + DmFunction + `DmModal`
+9. **Phase 9 — 外部記事収集**: ExternalReviewCollector Lambda（Qiita/note → BoardTable）
 
 ## 検証方法
 
@@ -262,10 +428,13 @@ SUMMARY / DESCRIPTION / LOCATION / URL
 2. ハートをクリック → DynamoDB `hackathon-user-data` に `{user_id, SK: "FAV#..."}`
 3. 別デバイスでログイン → お気に入りが同期されている
 4. 参加予定に登録 → `/mypage` の参加予定一覧に表示
-5. 締め切り翌日にリマインダーメール受信
-6. メモを保存 → ページリロード後も表示
-7. カレンダー追加 → `.ics` ダウンロード、Google Calendar へインポート
-8. `npm run build` でエラーなし
+5. メモを保存 → ページリロード後も表示
+6. カレンダー追加 → `.ics` ダウンロード、Google Calendar へインポート
+7. 口コミ投稿 → `hackathon-board` に `SK: "REVIEW#..."` レコード追加 → 口コミタブに表示
+8. ExternalReviewCollector 手動実行 → Qiita/note 記事が口コミタブに表示
+9. チーム募集投稿 → チーム募集タブに表示、投稿者本人のみ削除ボタン表示
+10. 別ユーザーで「DMを送る」→ DmModal → POST /dm → マイページ受信箱に未読バッジ
+11. `npm run build` でエラーなし
 
 ---
 
