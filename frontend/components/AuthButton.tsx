@@ -25,7 +25,7 @@ export function AuthButton() {
       </span>
       <a
         href="/mypage"
-        className="text-sm px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 font-medium hover:bg-gray-200 transition-colors"
+        className="text-sm px-3 py-1.5 rounded-full bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors"
       >
         マイページ
       </a>

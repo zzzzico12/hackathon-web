@@ -159,8 +159,9 @@ export default function MyPage() {
           </div>
         </div>
 
-        {/* Sections */}
-        {SECTIONS.map(({ type, label, Icon, headerColor }) => {
+        {/* Sections — display order: FAV, PLAN, APPLIED */}
+        {(["FAV", "PLAN", "APPLIED"] as Section[]).map((type) => {
+          const { label, Icon, headerColor } = SECTIONS.find((s) => s.type === type)!;
           const ids = [...userData[type]];
           if (!ids.length) return null;
           return (
