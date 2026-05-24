@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useAuth } from "@/lib/useAuth";
-import { User, MessageSquare } from "lucide-react";
+import { User, Settings, MessageSquare } from "lucide-react";
 
 function Avatar({ src, name }: { src: string | null; name: string | null }) {
   const [err, setErr] = useState(false);
@@ -41,12 +41,21 @@ export function AuthButton() {
 
   return (
     <div className="flex items-center gap-2">
-      {/* Profile area — avatar + name */}
-      <a href="/mypage/profile" className="flex items-center gap-1.5 hover:opacity-80 transition-opacity">
-        <Avatar src={avatarUrl} name={name} />
-        <span className="text-sm font-medium text-gray-700 hidden sm:inline max-w-[120px] truncate">
-          {name ?? "ユーザー"}
-        </span>
+      {/* Avatar */}
+      <Avatar src={avatarUrl} name={name} />
+
+      {/* Username */}
+      <span className="text-sm font-medium text-gray-700 hidden sm:inline max-w-[120px] truncate">
+        {name ?? "ユーザー"}
+      </span>
+
+      {/* Gear — profile settings */}
+      <a
+        href="/mypage/profile"
+        title="プロフィール設定"
+        className="w-7 h-7 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+      >
+        <Settings size={16} />
       </a>
 
       {/* DM icon — placeholder for future feature */}
