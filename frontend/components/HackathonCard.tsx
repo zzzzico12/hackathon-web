@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Hackathon } from "@/lib/types";
 import { formatDate, formatPrize } from "@/lib/api";
+import { DeadlineCountdown } from "@/components/DeadlineCountdown";
 
 interface Props {
   hackathon: Hackathon;
@@ -29,6 +30,7 @@ export function HackathonCard({ hackathon: h }: Props) {
           <span>⏰ 締切 {formatDate(h.entry_deadline)}</span>
         )}
         <span>{h.is_online ? "🌐 オンライン" : `📍 ${h.location ?? "会場未定"}`}</span>
+        {h.entry_deadline && <DeadlineCountdown entryDeadline={h.entry_deadline} />}
       </div>
 
       <div className="mt-3 flex flex-wrap gap-1.5">

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { fetchHackathon, formatDate, formatPrize } from "@/lib/api";
+import { HackathonActions } from "@/components/HackathonActions";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -135,6 +136,8 @@ export default async function HackathonDetail({ params }: Props) {
               </p>
             </div>
           )}
+
+          <HackathonActions hackathon={h} />
 
           {h.source_url && (
             <a

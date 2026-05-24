@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
+import { AmplifyProvider } from "@/components/AmplifyProvider";
 
 const geist = Geist({ subsets: ["latin"] });
 
@@ -22,7 +23,7 @@ export default function RootLayout({
   return (
     <html lang="ja" className="h-full antialiased">
       <body className={`${geist.className} min-h-full flex flex-col`}>
-        {children}
+        <AmplifyProvider>{children}</AmplifyProvider>
       </body>
     </html>
   );
