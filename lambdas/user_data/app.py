@@ -92,6 +92,8 @@ def post_action(event):
     source_id = body.get("source_id", "").strip()
     if action_type not in VALID_TYPES or not source_id:
         return resp(400, {"error": "type and source_id are required"})
+    if len(source_id) > 300:
+        return resp(400, {"error": "source_id too long"})
 
     sk = f"{action_type}#{source_id}"
     item = {
@@ -100,7 +102,10 @@ def post_action(event):
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     if action_type == "NOTE":
-        item["body"] = body.get("body", "")
+        note_body = body.get("body", "")
+        if len(note_body) > 2000:
+            return resp(400, {"error": "note too long (max 2000 chars)"})
+        item["body"] = note_body
     elif action_type == "DONE" or action_type == "APPLIED":
         pass  # no extra fields
 

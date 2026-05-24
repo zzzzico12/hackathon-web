@@ -99,12 +99,14 @@ def send_message(event):
         return resp(400, {"error": "invalid JSON"})
 
     to_user_id = body.get("to_user_id", "").strip()
-    to_display_name = body.get("to_display_name", "").strip() or "匿名"
-    sender_display_name = body.get("sender_display_name", "").strip() or "匿名"
+    to_display_name = body.get("to_display_name", "").strip()[:100] or "匿名"
+    sender_display_name = body.get("sender_display_name", "").strip()[:100] or "匿名"
     message_body = body.get("body", "").strip()
 
     if not to_user_id or not message_body:
         return resp(400, {"error": "to_user_id and body are required"})
+    if len(message_body) > 5000:
+        return resp(400, {"error": "body too long (max 5000 chars)"})
     if sender_id == to_user_id:
         return resp(400, {"error": "cannot send DM to yourself"})
 

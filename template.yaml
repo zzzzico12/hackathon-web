@@ -173,7 +173,7 @@ Resources:
           - Effect: Allow
             Principal: "*"
             Action: s3:GetObject
-            Resource: !Sub "arn:aws:s3:::${AvatarBucket}/*"
+            Resource: !Sub "arn:aws:s3:::${AvatarBucket}/avatars/*"
 
 # ─────────────────────────────────────────
 # Cognito（Google Sign-In のみ、メール取得なし）

@@ -128,6 +128,8 @@ def post_item(event, hackathon_id):
     content = body.get("body", "").strip()
     if not content:
         return resp(400, {"error": "body is required"})
+    if len(content) > 5000:
+        return resp(400, {"error": "body too long (max 5000 chars)"})
 
     parent_sk = body.get("parent_sk", "").strip()
     now = datetime.now(timezone.utc).isoformat()
@@ -180,6 +182,8 @@ def patch_item(event, hackathon_id, sk):
     content = body.get("body", "").strip()
     if not content:
         return resp(400, {"error": "body is required"})
+    if len(content) > 5000:
+        return resp(400, {"error": "body too long (max 5000 chars)"})
 
     update_expr = "SET #b = :body"
     expr_names = {"#b": "body"}
