@@ -534,7 +534,6 @@ Resources:
         Authorizers:
           CognitoAuthorizer:
             UserPoolArn: !GetAtt UserPool.Arn
-        DefaultAuthorizer: NONE
       MethodSettings:
         - ResourcePath: "/*"
           HttpMethod: "*"
