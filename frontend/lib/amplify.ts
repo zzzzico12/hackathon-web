@@ -5,10 +5,6 @@ import { Amplify } from "aws-amplify";
 const userPoolId = process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID!;
 const userPoolClientId = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID!;
 const domain = process.env.NEXT_PUBLIC_COGNITO_DOMAIN!;
-const appUrl =
-  typeof window !== "undefined"
-    ? window.location.origin
-    : "https://hackathon.zzzzico.click";
 
 Amplify.configure({
   Auth: {
@@ -19,8 +15,14 @@ Amplify.configure({
         oauth: {
           domain,
           scopes: ["openid", "profile"],
-          redirectSignIn: [`${appUrl}/auth/callback`],
-          redirectSignOut: [`${appUrl}/`],
+          redirectSignIn: [
+            "https://hackathon.zzzzico.click/auth/callback",
+            "http://localhost:3000/auth/callback",
+          ],
+          redirectSignOut: [
+            "https://hackathon.zzzzico.click",
+            "http://localhost:3000",
+          ],
           responseType: "code",
         },
       },
