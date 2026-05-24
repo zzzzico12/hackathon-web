@@ -11,7 +11,7 @@ export async function fetchHackathons(
   });
 
   const res = await fetch(`${API_BASE}/hackathons?${qs}`, {
-    next: { revalidate: 60 * 10 }, // ISR: 10分キャッシュ
+    next: { revalidate: 60 }, // 1分キャッシュ
   });
 
   if (!res.ok) throw new Error(`API error: ${res.status}`);
