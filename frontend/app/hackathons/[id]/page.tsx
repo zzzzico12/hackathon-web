@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { fetchHackathon, formatDate, formatPrize } from "@/lib/api";
 import { HackathonActions } from "@/components/HackathonActions";
+import { HackathonBoard } from "@/components/HackathonBoard";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -76,7 +77,7 @@ export default async function HackathonDetail({ params }: Props) {
       </header>
 
       <div className="max-w-3xl mx-auto px-4 py-8">
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-6">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-6 mb-2">
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-2">
               <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
@@ -150,6 +151,8 @@ export default async function HackathonDetail({ params }: Props) {
             </a>
           )}
         </div>
+
+        <HackathonBoard sourceId={sourceId} title={h.title} />
       </div>
     </main>
   );

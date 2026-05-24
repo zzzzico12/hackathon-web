@@ -4,9 +4,9 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 const TABS = [
-  { key: "hackathons", label: "ハッカソン" },
-  { key: "reports",    label: "参加レポート" },
+  { key: "hackathons", label: "一覧" },
   { key: "team",       label: "チーム募集" },
+  { key: "reports",    label: "参加レポート" },
 ] as const;
 
 export type TabKey = (typeof TABS)[number]["key"];

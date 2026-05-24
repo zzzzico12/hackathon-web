@@ -92,7 +92,7 @@ def get_global(event):
 
 def get_by_hackathon(event, hackathon_id):
     qs = event.get("queryStringParameters") or {}
-    tab = qs.get("tab", "reports")
+    tab = qs.get("tab", "team")
     board_type = "REPORT" if tab == "reports" else "TEAM"
 
     result = table.query(
@@ -100,7 +100,7 @@ def get_by_hackathon(event, hackathon_id):
             Key("hackathon_source_id").eq(hackathon_id)
             & Key("SK").begins_with(f"{board_type}#")
         ),
-        ScanIndexForward=False,
+        ScanIndexForward=True,  # ascending: top-level posts before replies
     )
     return resp(200, {"items": result.get("Items", [])})
 
@@ -120,22 +120,32 @@ def post_item(event, hackathon_id):
     if not content:
         return resp(400, {"error": "body is required"})
 
+    parent_sk = body.get("parent_sk", "").strip()
     now = datetime.now(timezone.utc).isoformat()
-    sk = f"{board_type}#{now}#{user_id}"
+
+    if parent_sk:
+        # Reply: SK starts with board_type prefix so begins_with query includes it
+        sk = f"{board_type}#REPLY#{now}#{user_id}"
+        item_board_type = "REPLY"
+    else:
+        sk = f"{board_type}#{now}#{user_id}"
+        item_board_type = board_type
 
     item = {
         "hackathon_source_id": hackathon_id,
         "SK": sk,
-        "board_type": board_type,
+        "board_type": item_board_type,
         "user_id": user_id,
         "display_name": body.get("display_name", ""),
         "hackathon_title": body.get("hackathon_title", ""),
         "body": content,
         "created_at": now,
     }
-    if board_type == "REPORT" and body.get("rating") is not None:
+    if parent_sk:
+        item["parent_sk"] = parent_sk
+    if board_type == "REPORT" and not parent_sk and body.get("rating") is not None:
         item["rating"] = max(1, min(5, int(body["rating"])))
-    if board_type == "TEAM":
+    if board_type == "TEAM" and not parent_sk:
         item["skills"] = body.get("skills", [])
         item["wants"] = body.get("wants", [])
         item["contact"] = body.get("contact", "")
