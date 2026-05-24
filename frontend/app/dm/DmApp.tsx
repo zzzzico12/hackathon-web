@@ -99,10 +99,10 @@ export function DmApp({
     if (res?.ok) {
       const data = await res.json();
       setMessages(data.messages ?? []);
-      // mark read in inbox state
       setConversations(prev =>
         prev.map(c => c.other_user_id === otherUserId ? { ...c, unread_count: 0 } : c)
       );
+      window.dispatchEvent(new Event("dm-inbox-updated"));
     }
   }, []);
 
@@ -320,7 +320,6 @@ export function DmApp({
                   const showDateLabel =
                     i === 0 ||
                     fmtDateLabel(prevMsg.created_at) !== fmtDateLabel(msg.created_at);
-                  const prevIsOwn = prevMsg && prevMsg.sender_id === user?.userId;
                   const showName = !isOwn && (!prevMsg || prevMsg.sender_id !== msg.sender_id || showDateLabel);
 
                   return (
@@ -366,13 +365,7 @@ export function DmApp({
                   ref={textareaRef}
                   value={inputText}
                   onChange={handleInput}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSend();
-                    }
-                  }}
-                  placeholder="メッセージを入力… (Shift+Enter で改行)"
+                  placeholder="メッセージを入力…"
                   rows={1}
                   className="flex-1 text-sm border border-gray-200 rounded-2xl px-4 py-2.5 resize-none focus:outline-none focus:ring-2 focus:ring-blue-300 overflow-y-auto"
                   style={{ minHeight: "42px", maxHeight: "120px" }}

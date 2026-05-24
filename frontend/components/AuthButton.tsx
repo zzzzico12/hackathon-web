@@ -61,7 +61,11 @@ export function AuthButton() {
 
     fetchUnread();
     const id = setInterval(fetchUnread, 60000);
-    return () => clearInterval(id);
+    window.addEventListener("dm-inbox-updated", fetchUnread);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("dm-inbox-updated", fetchUnread);
+    };
   }, [user]);
 
   if (loading) return null;
