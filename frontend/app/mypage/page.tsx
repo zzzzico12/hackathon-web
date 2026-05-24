@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Heart, Trophy, CheckCircle2, FileText, ChevronRight, LogIn, Settings } from "lucide-react";
+import { Heart, Trophy, CheckCircle2, FileText, ChevronRight, LogIn } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import { useUserData } from "@/lib/useUserData";
 import { HackathonCard } from "@/components/HackathonCard";
@@ -126,14 +126,7 @@ export default function MyPage() {
           <Link href="/" className="text-sm text-blue-600 hover:underline shrink-0">
             ← 一覧に戻る
           </Link>
-          <h1 className="text-lg font-bold text-gray-900 flex-1">マイページ</h1>
-          <Link
-            href="/mypage/profile"
-            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors"
-          >
-            <Settings size={15} />
-            <span className="hidden sm:inline">プロフィール設定</span>
-          </Link>
+          <h1 className="text-lg font-bold text-gray-900">マイページ</h1>
         </div>
       </header>
 
