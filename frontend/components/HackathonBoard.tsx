@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Pencil, Star, Users } from "lucide-react";
+import { MessageCircle, Pencil, Star, Users } from "lucide-react";
+import Link from "next/link";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { useAuth } from "@/lib/useAuth";
 import { BoardPostModal, type BoardItem } from "@/components/BoardPostModal";
@@ -132,14 +133,25 @@ function ThreadCard({
   };
 
   const isOwnPost = currentUserId && post.SK.endsWith(`#${currentUserId}`);
+  const canDmPost = currentUserId && !isOwnPost && post.user_id;
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
       {/* Top-level post */}
       <div className="flex items-start justify-between gap-2 mb-2">
-        <span className="text-xs font-semibold text-gray-700">
-          {post.display_name || "匿名"}
-        </span>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-xs font-semibold text-gray-700 shrink-0">
+            {post.display_name || "匿名"}
+          </span>
+          {canDmPost && (
+            <Link
+              href={`/dm/compose?to=${post.user_id}`}
+              className="text-xs text-blue-500 hover:text-blue-700 hover:underline shrink-0"
+            >
+              この方にDMを送る
+            </Link>
+          )}
+        </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <span className="text-xs text-gray-400">{timeAgo(post.created_at)}</span>
           {isOwnPost && (
@@ -264,9 +276,10 @@ function ThreadCard({
           ) : (
             <button
               onClick={() => setShowReply(true)}
-              className="text-xs text-gray-400 hover:text-blue-600 transition-colors"
+              className="flex items-center gap-1 text-xs text-gray-400 hover:text-blue-600 transition-colors"
             >
-              💬 返信する
+              <MessageCircle size={13} />
+              返信する
             </button>
           )}
         </div>

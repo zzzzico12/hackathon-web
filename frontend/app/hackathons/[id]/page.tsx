@@ -68,7 +68,7 @@ export default async function HackathonDetail({ params }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <header className="bg-white border-b border-gray-100">
+      <header className="bg-white border-b border-gray-100 sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-4 py-4">
           <Link href="/" className="text-sm text-blue-600 hover:underline">
             ← 一覧に戻る

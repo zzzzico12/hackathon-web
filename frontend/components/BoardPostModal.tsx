@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Star, MessageCircle } from "lucide-react";
+import { Star } from "lucide-react";
 import { fetchAuthSession } from "aws-amplify/auth";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/v1";
@@ -28,6 +28,7 @@ export interface BoardItem {
   SK: string;
   board_type: "TEAM" | "REPORT" | "REPLY";
   parent_sk?: string;
+  user_id?: string;
   display_name: string;
   body: string;
   created_at: string;
@@ -248,14 +249,6 @@ export function BoardPostModal({
           className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 resize-none focus:outline-none focus:ring-2 focus:ring-blue-300"
         />
 
-        {type === "TEAM" && !isEdit && (
-          <div className="flex items-start gap-2 rounded-xl bg-blue-50 px-3 py-2.5">
-            <MessageCircle size={15} className="text-blue-400 mt-0.5 shrink-0" />
-            <p className="text-xs text-blue-600 leading-relaxed">
-              チームメンバーへのコンタクトには、投稿への返信またはDM機能をご利用ください。
-            </p>
-          </div>
-        )}
 
         {error && <p className="text-xs text-red-500">{error}</p>}
 
