@@ -31,18 +31,12 @@ const THEME_OPTIONS = [
   { label: "ロボット", value: "ロボット" },
 ];
 
-const STATUS_OPTIONS = [
-  { label: "開催予定", value: "UPCOMING" },
-  { label: "過去", value: "PAST" },
-  { label: "すべて", value: "ALL" },
-];
-
 const SORT_OPTIONS = [
   { label: "開始日（早い順）", value: "" },
   { label: "賞金（多い順）", value: "prize_desc" },
 ];
 
-export function FilterBar() {
+export function FilterBar({ activeTab = "hackathons" }: { activeTab?: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -92,9 +86,11 @@ export function FilterBar() {
     current("sort"),
   ].filter(Boolean).length;
 
+  const isHackathonTab = activeTab === "hackathons";
+
   const filters = (
     <div className="flex flex-wrap gap-3 items-center">
-      {/* キーワード検索 */}
+      {/* キーワード検索（全タブ共通） */}
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -112,45 +108,44 @@ export function FilterBar() {
         />
       </form>
 
-      <Select
-        label="開催状況"
-        value={current("status", "UPCOMING")}
-        options={STATUS_OPTIONS}
-        onChange={(v) => setParam("status", v)}
-      />
-      <Select
-        label="形式"
-        value={current("online")}
-        options={ONLINE_OPTIONS}
-        onChange={(v) => setParam("online", v)}
-      />
-      <Select
-        label="賞金"
-        value={current("prize")}
-        options={PRIZE_OPTIONS}
-        onChange={(v) => setParam("prize", v)}
-      />
-      <Select
-        label="テーマ"
-        value={current("theme")}
-        options={THEME_OPTIONS}
-        onChange={(v) => setParam("theme", v)}
-      />
-      <Select
-        label="並び順"
-        value={current("sort")}
-        options={SORT_OPTIONS}
-        onChange={(v) => setParam("sort", v)}
-      />
-      <label className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer select-none">
-        <input
-          type="checkbox"
-          className="rounded"
-          checked={current("beginner") === "true"}
-          onChange={(e) => setParam("beginner", e.target.checked ? "true" : "")}
-        />
-        初心者歓迎のみ
-      </label>
+      {/* ハッカソンタブのみ表示するフィルター */}
+      {isHackathonTab && (
+        <>
+          <Select
+            label="形式"
+            value={current("online")}
+            options={ONLINE_OPTIONS}
+            onChange={(v) => setParam("online", v)}
+          />
+          <Select
+            label="賞金"
+            value={current("prize")}
+            options={PRIZE_OPTIONS}
+            onChange={(v) => setParam("prize", v)}
+          />
+          <Select
+            label="テーマ"
+            value={current("theme")}
+            options={THEME_OPTIONS}
+            onChange={(v) => setParam("theme", v)}
+          />
+          <Select
+            label="並び順"
+            value={current("sort")}
+            options={SORT_OPTIONS}
+            onChange={(v) => setParam("sort", v)}
+          />
+          <label className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              className="rounded"
+              checked={current("beginner") === "true"}
+              onChange={(e) => setParam("beginner", e.target.checked ? "true" : "")}
+            />
+            初心者歓迎のみ
+          </label>
+        </>
+      )}
     </div>
   );
 

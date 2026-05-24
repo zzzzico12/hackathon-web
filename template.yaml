@@ -99,6 +99,35 @@ Resources:
         - AttributeName: SK
           KeyType: RANGE
 
+  BoardTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: hackathon-board
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: hackathon_source_id
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+        - AttributeName: board_type
+          AttributeType: S
+        - AttributeName: created_at
+          AttributeType: S
+      KeySchema:
+        - AttributeName: hackathon_source_id
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: type-date-index
+          KeySchema:
+            - AttributeName: board_type
+              KeyType: HASH
+            - AttributeName: created_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
   AvatarBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -385,6 +414,33 @@ Resources:
                 Resource:
                   - !Sub "arn:aws:s3:::${AvatarBucket}/*"
 
+  BoardRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: board-policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:Query
+                Resource:
+                  - !GetAtt BoardTable.Arn
+                  - !Sub "${BoardTable.Arn}/index/*"
+
   # API系: DynamoDB読み取りのみ（書き込み不可）
   ApiRole:
     Type: AWS::IAM::Role
@@ -657,6 +713,48 @@ Resources:
             RestApiId: !Ref HackathonApi
             Path: /user/avatar/presign
             Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
+
+  BoardFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: hackathon-board
+      CodeUri: lambdas/board/
+      Handler: app.handler
+      Role: !GetAtt BoardRole.Arn
+      Timeout: 10
+      MemorySize: 128
+      Environment:
+        Variables:
+          BOARD_TABLE: !Ref BoardTable
+      Events:
+        GetGlobal:
+          Type: Api
+          Properties:
+            RestApiId: !Ref HackathonApi
+            Path: /board
+            Method: GET
+        GetByHackathon:
+          Type: Api
+          Properties:
+            RestApiId: !Ref HackathonApi
+            Path: /hackathons/{source_id}/board
+            Method: GET
+        PostItem:
+          Type: Api
+          Properties:
+            RestApiId: !Ref HackathonApi
+            Path: /hackathons/{source_id}/board
+            Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
+        DeleteItem:
+          Type: Api
+          Properties:
+            RestApiId: !Ref HackathonApi
+            Path: /hackathons/{source_id}/board/{sk}
+            Method: DELETE
             Auth:
               Authorizer: CognitoAuthorizer
 
