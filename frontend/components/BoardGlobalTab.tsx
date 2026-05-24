@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Star, Users, ChevronRight, MessageSquare } from "lucide-react";
+import { Star, Users, ChevronRight, LogIn } from "lucide-react";
 import type { TabKey } from "@/components/TabBar";
+import { useAuth } from "@/lib/useAuth";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/v1";
 
@@ -128,8 +129,9 @@ function TeamCard({ item }: { item: BoardItem }) {
 }
 
 export function BoardGlobalTab({ tab, q }: { tab: TabKey; q?: string }) {
+  const { user, loading: authLoading, signIn } = useAuth();
   const [items, setItems] = useState<BoardItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(false);
   const [lastKey, setLastKey] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
 
@@ -145,15 +147,16 @@ export function BoardGlobalTab({ tab, q }: { tab: TabKey; q?: string }) {
   );
 
   useEffect(() => {
-    setLoading(true);
+    if (!user) return;
+    setDataLoading(true);
     setItems([]);
     setLastKey(null);
     fetchItems().then(({ items, last_key }) => {
       setItems(items);
       setLastKey(last_key);
-      setLoading(false);
+      setDataLoading(false);
     });
-  }, [fetchItems]);
+  }, [fetchItems, user]);
 
   const loadMore = async () => {
     if (!lastKey) return;
@@ -166,9 +169,43 @@ export function BoardGlobalTab({ tab, q }: { tab: TabKey; q?: string }) {
 
   const isReports = tab === "reports";
 
+  if (authLoading) {
+    return (
+      <div className="max-w-5xl mx-auto px-4 py-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="bg-white rounded-2xl border border-gray-100 p-4 animate-pulse h-36" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="max-w-5xl mx-auto px-4 py-20 text-center">
+        <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center mx-auto mb-4">
+          <LogIn size={24} className="text-blue-400" />
+        </div>
+        <p className="text-gray-700 font-medium mb-2">
+          {isReports ? "参加レポート" : "チーム募集"}の閲覧にはログインが必要です
+        </p>
+        <p className="text-sm text-gray-400 mb-6">
+          Googleアカウントで簡単に登録できます
+        </p>
+        <button
+          onClick={signIn}
+          className="px-6 py-2.5 rounded-full bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
+        >
+          Googleでログイン
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-6">
-      {loading ? (
+      {dataLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[...Array(6)].map((_, i) => (
             <div key={i} className="bg-white rounded-2xl border border-gray-100 p-4 animate-pulse h-36" />

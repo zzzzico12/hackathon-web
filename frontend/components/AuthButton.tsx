@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useAuth } from "@/lib/useAuth";
-import { User, Settings, MessageSquare } from "lucide-react";
+import { User, Settings, MessageSquare, Home, LogOut } from "lucide-react";
 
 function Avatar({ src, name }: { src: string | null; name: string | null }) {
   const [err, setErr] = useState(false);
@@ -69,15 +69,19 @@ export function AuthButton() {
 
       <a
         href="/mypage"
-        className="text-sm px-3 py-1.5 rounded-full bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors"
+        title="マイページ"
+        className="inline-flex items-center justify-center rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors font-medium w-7 h-7 sm:w-auto sm:h-auto sm:px-3 sm:py-1.5 sm:text-sm"
       >
-        マイページ
+        <Home size={14} className="sm:hidden" />
+        <span className="hidden sm:inline">マイページ</span>
       </a>
       <button
         onClick={signOut}
-        className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+        title="ログアウト"
+        className="inline-flex items-center justify-center rounded-full w-7 h-7 sm:w-auto sm:h-auto text-gray-400 hover:text-gray-600 hover:bg-gray-100 sm:hover:bg-transparent transition-colors sm:text-xs sm:rounded-none"
       >
-        ログアウト
+        <LogOut size={14} className="sm:hidden" />
+        <span className="hidden sm:inline">ログアウト</span>
       </button>
     </div>
   );

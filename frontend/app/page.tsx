@@ -41,11 +41,13 @@ export default async function Home({ searchParams }: SearchParamsProps) {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center gap-4">
-          <h1 className="text-lg font-bold text-gray-900 shrink-0">
+      <header className="bg-white sticky top-0 z-10">
+        <div className="max-w-5xl mx-auto px-4 py-3">
+          <h1 className="text-lg font-bold text-gray-900">
             🚀 Hackathon Japan
           </h1>
+        </div>
+        <div className="max-w-5xl mx-auto px-4 pb-2">
           <Suspense>
             <FilterBar activeTab={activeTab} />
           </Suspense>
