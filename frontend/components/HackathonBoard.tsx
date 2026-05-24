@@ -76,7 +76,6 @@ function ThreadCard({
   onDeleteRequest,
   onEditRequest,
   onReplyPosted,
-  onSignIn,
 }: {
   thread: Thread;
   tab: TabType;
@@ -86,7 +85,6 @@ function ThreadCard({
   onDeleteRequest: (sk: string) => void;
   onEditRequest: (item: BoardItem) => void;
   onReplyPosted: (reply: BoardItem) => void;
-  onSignIn: () => void;
 }) {
   const { post, replies } = thread;
   const [showReply, setShowReply] = useState(false);
@@ -135,7 +133,7 @@ function ThreadCard({
   };
 
   const isOwnPost = currentUserId && post.SK.endsWith(`#${currentUserId}`);
-  const showDmButton = !isOwnPost && post.user_id;
+  const showDmButton = !!currentUserId && !isOwnPost && !!post.user_id;
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
@@ -146,21 +144,12 @@ function ThreadCard({
             {post.display_name || "匿名"}
           </span>
           {showDmButton && (
-            currentUserId ? (
-              <Link
-                href={`/dm/compose?to=${post.user_id}`}
-                className="text-xs text-blue-500 hover:text-blue-700 hover:underline shrink-0"
-              >
-                この方にDMを送る
-              </Link>
-            ) : (
-              <button
-                onClick={onSignIn}
-                className="text-xs text-blue-500 hover:text-blue-700 hover:underline shrink-0"
-              >
-                この方にDMを送る
-              </button>
-            )
+            <Link
+              href={`/dm?with=${post.user_id}&name=${encodeURIComponent(post.display_name || "匿名")}`}
+              className="text-xs text-blue-500 hover:text-blue-700 hover:underline shrink-0"
+            >
+              この方にDMを送る
+            </Link>
           )}
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
@@ -473,7 +462,6 @@ export function HackathonBoard({
               onDeleteRequest={setDeletingsk}
               onEditRequest={setEditingItem}
               onReplyPosted={handleReplyPosted}
-              onSignIn={signIn}
             />
           ))}
         </div>
