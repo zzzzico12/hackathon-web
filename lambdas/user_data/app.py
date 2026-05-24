@@ -4,13 +4,21 @@ from datetime import datetime, timezone
 from urllib.parse import unquote
 
 import boto3
+import botocore.config
 from boto3.dynamodb.conditions import Key
 
 TABLE_NAME = os.environ["USER_DATA_TABLE"]
 AVATAR_BUCKET = os.environ.get("AVATAR_BUCKET", "")
+REGION = os.environ.get("AWS_REGION", "ap-northeast-1")
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(TABLE_NAME)
-s3 = boto3.client("s3")
+# region_name + SigV4 forces presigned URLs to use the regional endpoint
+# (s3.ap-northeast-1.amazonaws.com), which is required for CORS to apply.
+s3 = boto3.client(
+    "s3",
+    region_name=REGION,
+    config=botocore.config.Config(signature_version="s3v4"),
+)
 
 VALID_TYPES = {"FAV", "DONE", "APPLIED", "NOTE"}
 CORS = {
@@ -120,7 +128,7 @@ def presign_avatar(event):
         Params={"Bucket": AVATAR_BUCKET, "Key": key},
         ExpiresIn=300,
     )
-    avatar_url = f"https://{AVATAR_BUCKET}.s3.ap-northeast-1.amazonaws.com/{key}"
+    avatar_url = f"https://{AVATAR_BUCKET}.s3.{REGION}.amazonaws.com/{key}"
     return resp(200, {"upload_url": upload_url, "avatar_url": avatar_url})
 
 
