@@ -160,19 +160,34 @@ def _build_filter(beginner, theme, q):
 
 
 def query_index(index: str, key_cond, filter_expr, limit: int, exclusive_start):
-    kwargs = {
-        "IndexName": index,
-        "KeyConditionExpression": key_cond,
-        "Limit": limit,
-        "ScanIndexForward": True,
-    }
-    if filter_expr:
-        kwargs["FilterExpression"] = filter_expr
-    if exclusive_start:
-        kwargs["ExclusiveStartKey"] = exclusive_start
+    items = []
+    cursor = exclusive_start
+    total_scanned = 0
+    MAX_SCAN = 500
+    # FilterExpression がある場合は多めに読んでフィルタ漏れを防ぐ
+    batch_size = limit if not filter_expr else min(limit * 5, 100)
 
-    result = table.query(**kwargs)
-    return result.get("Items", []), result.get("LastEvaluatedKey")
+    while True:
+        kwargs = {
+            "IndexName": index,
+            "KeyConditionExpression": key_cond,
+            "Limit": batch_size,
+            "ScanIndexForward": True,
+        }
+        if filter_expr:
+            kwargs["FilterExpression"] = filter_expr
+        if cursor:
+            kwargs["ExclusiveStartKey"] = cursor
+
+        result = table.query(**kwargs)
+        items.extend(result.get("Items", []))
+        cursor = result.get("LastEvaluatedKey")
+        total_scanned += result.get("ScannedCount", 0)
+
+        if len(items) >= limit or not cursor or not filter_expr or total_scanned >= MAX_SCAN:
+            break
+
+    return items[:limit], cursor
 
 
 # ─── 詳細 ─────────────────────────────────────────────────────────

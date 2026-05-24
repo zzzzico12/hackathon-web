@@ -172,7 +172,7 @@ async function HackathonTab({
             </div>
           )}
 
-          {data.next_token && (
+          {data.next_token && data.items.length > 0 && (
             <div className="mt-8 text-center">
               <a
                 href={`/?${new URLSearchParams({
