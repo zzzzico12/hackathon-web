@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Heart, Trophy, CheckCircle2, FileText, ChevronRight, LogIn } from "lucide-react";
+import { Heart, Trophy, CheckCircle2, FileText, ChevronRight, LogIn, Settings } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import { useUserData } from "@/lib/useUserData";
 import { HackathonCard } from "@/components/HackathonCard";
@@ -53,7 +53,7 @@ const SECTIONS: {
 ];
 
 export default function MyPage() {
-  const { user, name, loading: authLoading, signIn } = useAuth();
+  const { user, loading: authLoading, signIn } = useAuth();
   const userData = useUserData(!!user);
   const [hackathons, setHackathons] = useState<Record<string, Hackathon>>({});
 
@@ -116,8 +116,6 @@ export default function MyPage() {
   }
 
   const noteEntries = [...userData.NOTES.entries()].filter(([, body]) => body);
-  const totalItems =
-    userData.FAV.size + userData.DONE.size + userData.APPLIED.size + noteEntries.length;
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -127,18 +125,20 @@ export default function MyPage() {
           <Link href="/" className="text-sm text-blue-600 hover:underline shrink-0">
             ← 一覧に戻る
           </Link>
-          <h1 className="text-lg font-bold text-gray-900">マイページ</h1>
+          <h1 className="text-lg font-bold text-gray-900 flex-1">マイページ</h1>
+          <Link
+            href="/mypage/profile"
+            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+          >
+            <Settings size={15} />
+            <span className="hidden sm:inline">プロフィール設定</span>
+          </Link>
         </div>
       </header>
 
       <div className="max-w-5xl mx-auto px-4 py-6 space-y-8">
-        {/* Profile + Stats */}
+        {/* Stats */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="bg-gradient-to-r from-blue-600 to-blue-500 px-6 py-5">
-            <p className="text-white/80 text-sm">ようこそ</p>
-            <p className="text-white text-xl font-bold mt-0.5">{name ?? "ユーザー"}</p>
-            <p className="text-white/70 text-xs mt-1">登録アイテム {totalItems}件</p>
-          </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-gray-100">
             {SECTIONS.map(({ type, label, Icon, statBg }) => (
               <div key={type} className="p-4 text-center">
@@ -222,7 +222,7 @@ export default function MyPage() {
         )}
 
         {/* Empty state */}
-        {totalItems === 0 && !userData.loading && (
+        {userData.FAV.size === 0 && userData.DONE.size === 0 && userData.APPLIED.size === 0 && noteEntries.length === 0 && !userData.loading && (
           <div className="text-center py-16 text-gray-400">
             <FileText size={40} className="mx-auto mb-3 opacity-30" />
             <p className="text-sm">まだ登録されたアイテムがありません</p>
