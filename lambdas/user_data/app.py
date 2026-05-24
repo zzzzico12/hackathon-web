@@ -12,11 +12,13 @@ AVATAR_BUCKET = os.environ.get("AVATAR_BUCKET", "")
 REGION = os.environ.get("AWS_REGION", "ap-northeast-1")
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(TABLE_NAME)
-# region_name + SigV4 forces presigned URLs to use the regional endpoint
-# (s3.ap-northeast-1.amazonaws.com), which is required for CORS to apply.
+# endpoint_url forces presigned URLs to use the regional endpoint.
+# Without it, boto3 generates s3.amazonaws.com (global) which returns
+# no CORS headers for buckets outside us-east-1.
 s3 = boto3.client(
     "s3",
     region_name=REGION,
+    endpoint_url=f"https://s3.{REGION}.amazonaws.com",
     config=botocore.config.Config(signature_version="s3v4"),
 )
 

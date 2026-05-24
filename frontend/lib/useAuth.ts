@@ -42,7 +42,8 @@ export function useAuth(): AuthState & {
         if (AVATAR_BASE) setAvatarUrl(buildAvatarUrl(u.userId));
         const attrs = await fetchUserAttributes().catch(() => ({}));
         const a = attrs as Record<string, string>;
-        setName(a.preferred_username ?? a.name ?? null);
+        // custom:display_name is user-editable; name comes from Google and is overwritten on each sign-in
+        setName(a["custom:display_name"] ?? a.name ?? null);
       })
       .catch(() => setUser(null))
       .finally(() => setLoading(false));
@@ -60,7 +61,7 @@ export function useAuth(): AuthState & {
 
   const updateName = async (newName: string) => {
     const trimmed = newName.trim();
-    await updateUserAttributes({ userAttributes: { preferred_username: trimmed } });
+    await updateUserAttributes({ userAttributes: { "custom:display_name": trimmed } });
     setName(trimmed);
   };
 

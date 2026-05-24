@@ -179,6 +179,10 @@ Resources:
           AttributeDataType: String
           Mutable: true
           Required: false
+        - Name: display_name
+          AttributeDataType: String
+          Mutable: true
+          Required: false
 
   UserPoolGoogleIdP:
     Type: AWS::Cognito::UserPoolIdentityProvider
@@ -208,6 +212,8 @@ Resources:
         - openid
         - profile
       AllowedOAuthFlowsUserPoolClient: true
+      WriteAttributes:
+        - custom:display_name
       SupportedIdentityProviders:
         - Google
       CallbackURLs:
