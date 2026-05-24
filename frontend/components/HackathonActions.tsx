@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Heart, CalendarDays, CheckCircle2, FileText, CalendarPlus } from "lucide-react";
+import { Heart, Trophy, CheckCircle2, FileText, CalendarPlus } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import { useUserData } from "@/lib/useUserData";
 import { ActionButton } from "@/components/ActionButton";
@@ -61,19 +61,18 @@ export function HackathonActions({ hackathon: h }: Props) {
           activeClass="bg-red-50 text-red-600 border-red-200"
         />
         <ActionButton
-          active={ud.PLAN.has(h.source_id)}
-          onClick={() => requireAuth(() => ud.toggle("PLAN", h.source_id))}
-          icon={<CalendarDays size={13} />}
-          label="参加予定"
-          activeLabel="参加予定済み"
-          activeClass="bg-blue-50 text-blue-700 border-blue-200"
-        />
-        <ActionButton
           active={ud.APPLIED.has(h.source_id)}
           onClick={() => requireAuth(() => ud.toggle("APPLIED", h.source_id))}
           icon={<CheckCircle2 size={13} />}
           label="応募済み"
           activeClass="bg-emerald-50 text-emerald-700 border-emerald-200"
+        />
+        <ActionButton
+          active={ud.DONE.has(h.source_id)}
+          onClick={() => requireAuth(() => ud.toggle("DONE", h.source_id))}
+          icon={<Trophy size={13} />}
+          label="参加済み"
+          activeClass="bg-purple-50 text-purple-700 border-purple-200"
         />
         <ActionButton
           active={ud.NOTES.has(h.source_id)}

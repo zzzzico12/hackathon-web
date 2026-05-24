@@ -10,7 +10,7 @@ TABLE_NAME = os.environ["USER_DATA_TABLE"]
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(TABLE_NAME)
 
-VALID_TYPES = {"FAV", "PLAN", "APPLIED", "NOTE"}
+VALID_TYPES = {"FAV", "DONE", "APPLIED", "NOTE"}
 CORS = {
     "Access-Control-Allow-Origin": "https://hackathon.zzzzico.click",
     "Access-Control-Allow-Headers": "Content-Type,Authorization",
@@ -86,7 +86,7 @@ def post_action(event):
     }
     if action_type == "NOTE":
         item["body"] = body.get("body", "")
-    elif action_type == "PLAN" or action_type == "APPLIED":
+    elif action_type == "DONE" or action_type == "APPLIED":
         pass  # no extra fields
 
     table.put_item(Item=item)
@@ -112,7 +112,7 @@ def get_me(event):
     result = table.query(KeyConditionExpression=Key("user_id").eq(user_id))
     items = result.get("Items", [])
 
-    counts = {"FAV": 0, "PLAN": 0, "APPLIED": 0, "NOTE": 0}
+    counts = {"FAV": 0, "DONE": 0, "APPLIED": 0, "NOTE": 0}
     for item in items:
         sk = item.get("SK", "")
         for t in counts:

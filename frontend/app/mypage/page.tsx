@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Heart, CalendarDays, CheckCircle2, FileText, ChevronRight, LogIn } from "lucide-react";
+import { Heart, Trophy, CheckCircle2, FileText, ChevronRight, LogIn } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import { useUserData } from "@/lib/useUserData";
 import { HackathonCard } from "@/components/HackathonCard";
@@ -16,7 +16,7 @@ async function fetchHackathonById(sourceId: string): Promise<Hackathon | null> {
   return res.json();
 }
 
-type Section = "FAV" | "PLAN" | "APPLIED";
+type Section = "FAV" | "DONE" | "APPLIED";
 
 const SECTIONS: {
   type: Section;
@@ -26,14 +26,6 @@ const SECTIONS: {
   statText: string;
   headerColor: string;
 }[] = [
-  {
-    type: "PLAN",
-    label: "参加予定",
-    Icon: CalendarDays,
-    statBg: "bg-blue-600",
-    statText: "text-white",
-    headerColor: "text-blue-700",
-  },
   {
     type: "FAV",
     label: "お気に入り",
@@ -50,6 +42,14 @@ const SECTIONS: {
     statText: "text-white",
     headerColor: "text-emerald-700",
   },
+  {
+    type: "DONE",
+    label: "参加済み",
+    Icon: Trophy,
+    statBg: "bg-purple-600",
+    statText: "text-white",
+    headerColor: "text-purple-700",
+  },
 ];
 
 export default function MyPage() {
@@ -61,7 +61,7 @@ export default function MyPage() {
     if (!user || userData.loading) return;
     const allIds = new Set([
       ...userData.FAV,
-      ...userData.PLAN,
+      ...userData.DONE,
       ...userData.APPLIED,
       ...userData.NOTES.keys(),
     ]);
@@ -78,7 +78,7 @@ export default function MyPage() {
       });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, userData.loading, userData.FAV.size, userData.PLAN.size, userData.APPLIED.size]);
+  }, [user, userData.loading, userData.FAV.size, userData.DONE.size, userData.APPLIED.size]);
 
   if (authLoading) {
     return (
@@ -117,7 +117,7 @@ export default function MyPage() {
 
   const noteEntries = [...userData.NOTES.entries()].filter(([, body]) => body);
   const totalItems =
-    userData.FAV.size + userData.PLAN.size + userData.APPLIED.size + noteEntries.length;
+    userData.FAV.size + userData.DONE.size + userData.APPLIED.size + noteEntries.length;
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -159,8 +159,8 @@ export default function MyPage() {
           </div>
         </div>
 
-        {/* Sections — display order: FAV, PLAN, APPLIED */}
-        {(["FAV", "PLAN", "APPLIED"] as Section[]).map((type) => {
+        {/* Sections — display order: FAV, APPLIED, DONE */}
+        {(["FAV", "APPLIED", "DONE"] as Section[]).map((type) => {
           const { label, Icon, headerColor } = SECTIONS.find((s) => s.type === type)!;
           const ids = [...userData[type]];
           if (!ids.length) return null;

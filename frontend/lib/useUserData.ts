@@ -5,11 +5,11 @@ import { fetchAuthSession } from "aws-amplify/auth";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/v1";
 
-export type ActionType = "FAV" | "PLAN" | "APPLIED" | "NOTE";
+export type ActionType = "FAV" | "DONE" | "APPLIED" | "NOTE";
 
 export interface UserDataState {
   FAV: Set<string>;
-  PLAN: Set<string>;
+  DONE: Set<string>;
   APPLIED: Set<string>;
   NOTES: Map<string, string>;
   loading: boolean;
@@ -18,7 +18,7 @@ export interface UserDataState {
 
 const EMPTY: UserDataState = {
   FAV: new Set(),
-  PLAN: new Set(),
+  DONE: new Set(),
   APPLIED: new Set(),
   NOTES: new Map(),
   loading: false,
@@ -66,29 +66,29 @@ export function useUserData(loggedIn: boolean) {
       .then((r) => r.json())
       .then((data: { items: Array<{ SK: string; body?: string }> }) => {
         const FAV = new Set<string>();
-        const PLAN = new Set<string>();
+        const DONE = new Set<string>();
         const APPLIED = new Set<string>();
         const NOTES = new Map<string, string>();
         for (const item of data.items ?? []) {
           const [type, ...rest] = item.SK.split("#");
           const sourceId = rest.join("#");
           if (type === "FAV") FAV.add(sourceId);
-          else if (type === "PLAN") PLAN.add(sourceId);
+          else if (type === "DONE") DONE.add(sourceId);
           else if (type === "APPLIED") APPLIED.add(sourceId);
           else if (type === "NOTE") NOTES.set(sourceId, item.body ?? "");
         }
-        setState({ FAV, PLAN, APPLIED, NOTES, loading: false, needsLogin: false });
+        setState({ FAV, DONE, APPLIED, NOTES, loading: false, needsLogin: false });
       })
       .catch(() => setState({ ...EMPTY }));
   }, [loggedIn]);
 
   const toggle = useCallback(
-    async (type: "FAV" | "PLAN" | "APPLIED", sourceId: string) => {
+    async (type: "FAV" | "DONE" | "APPLIED", sourceId: string) => {
       if (!loggedIn) {
         setState((s) => ({ ...s, needsLogin: true }));
         return;
       }
-      const key = type as keyof Pick<UserDataState, "FAV" | "PLAN" | "APPLIED">;
+      const key = type as keyof Pick<UserDataState, "FAV" | "DONE" | "APPLIED">;
       const has = state[key].has(sourceId);
 
       // Optimistic update
