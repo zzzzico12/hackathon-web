@@ -336,7 +336,7 @@ export function DmApp({
                           {showName && (
                             <p className="text-xs text-gray-500 mb-0.5 ml-1">{msg.sender_display_name}</p>
                           )}
-                          <div className={`px-3.5 py-2 rounded-2xl text-sm leading-relaxed break-words ${
+                          <div className={`px-3.5 py-2 rounded-2xl text-sm leading-relaxed break-words whitespace-pre-wrap ${
                             isOwn
                               ? "bg-blue-600 text-white rounded-br-md"
                               : "bg-gray-100 text-gray-800 rounded-bl-md"

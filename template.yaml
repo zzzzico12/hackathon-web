@@ -594,10 +594,10 @@ Resources:
         Variables:
           TAVILY_API_KEY_SSM_NAME: /hackathon/tavily_api_key
       Events:
-        WeeklySchedule:
+        DailySchedule:
           Type: ScheduleV2
           Properties:
-            ScheduleExpression: "cron(0 22 ? * MON *)"   # JST 月曜 07:00
+            ScheduleExpression: "cron(0 22 * * ? *)"   # JST 毎日 07:00
             ScheduleExpressionTimezone: UTC
 
   StatusUpdaterFunction:

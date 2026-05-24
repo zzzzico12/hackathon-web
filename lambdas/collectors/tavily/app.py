@@ -29,9 +29,10 @@ TAVILY_API = "https://api.tavily.com/search"
 def _queries() -> list[str]:
     year = datetime.utcnow().year
     return [
-        f"ハッカソン 参加募集 {year}",
+        f"ハッカソン {year}",
         f"hackathon japan {year}",
-        f"ハッカソン 賞金 {year}",
+        f"開発コンテスト {year}",
+        f"アイデアソン {year}",
     ]
 
 # connpass/Doorkeeper/Devpostは別途APIで取得するのでスキップ
