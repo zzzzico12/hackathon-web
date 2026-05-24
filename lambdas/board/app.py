@@ -1,6 +1,7 @@
 import json
 import os
 from datetime import datetime, timezone
+from decimal import Decimal
 from urllib.parse import unquote
 
 import boto3
@@ -19,8 +20,14 @@ CORS = {
 VALID_TYPES = {"REPORT", "TEAM"}
 
 
+def _decimal(obj):
+    if isinstance(obj, Decimal):
+        return int(obj) if obj % 1 == 0 else float(obj)
+    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+
+
 def resp(status, body):
-    return {"statusCode": status, "headers": CORS, "body": json.dumps(body, ensure_ascii=False)}
+    return {"statusCode": status, "headers": CORS, "body": json.dumps(body, ensure_ascii=False, default=_decimal)}
 
 
 def get_user_id(event):
