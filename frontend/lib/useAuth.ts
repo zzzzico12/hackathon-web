@@ -22,6 +22,7 @@ export interface AuthState {
   name: string | null;
   avatarUrl: string | null;
   loading: boolean;
+  hasCustomDisplayName: boolean;
 }
 
 export function useAuth(): AuthState & {
@@ -34,6 +35,7 @@ export function useAuth(): AuthState & {
   const [name, setName] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hasCustomDisplayName, setHasCustomDisplayName] = useState(false);
 
   useEffect(() => {
     getCurrentUser()
@@ -43,7 +45,9 @@ export function useAuth(): AuthState & {
         const attrs = await fetchUserAttributes().catch(() => ({}));
         const a = attrs as Record<string, string>;
         // custom:display_name is user-editable; name comes from Google and is overwritten on each sign-in
-        setName(a["custom:display_name"] ?? a.name ?? null);
+        const customName = a["custom:display_name"];
+        setHasCustomDisplayName(!!customName);
+        setName(customName ?? a.name ?? null);
       })
       .catch(() => setUser(null))
       .finally(() => setLoading(false));
@@ -57,17 +61,19 @@ export function useAuth(): AuthState & {
     setUser(null);
     setName(null);
     setAvatarUrl(null);
+    setHasCustomDisplayName(false);
   };
 
   const updateName = async (newName: string) => {
     const trimmed = newName.trim();
     await updateUserAttributes({ userAttributes: { "custom:display_name": trimmed } });
     setName(trimmed);
+    setHasCustomDisplayName(true);
   };
 
   const refreshAvatar = () => {
     if (user && AVATAR_BASE) setAvatarUrl(buildAvatarUrl(user.userId, Date.now()));
   };
 
-  return { user, name, avatarUrl, loading, signIn, signOut, updateName, refreshAvatar };
+  return { user, name, avatarUrl, loading, hasCustomDisplayName, signIn, signOut, updateName, refreshAvatar };
 }

@@ -76,6 +76,7 @@ function ThreadCard({
   onDeleteRequest,
   onEditRequest,
   onReplyPosted,
+  onSignIn,
 }: {
   thread: Thread;
   tab: TabType;
@@ -85,6 +86,7 @@ function ThreadCard({
   onDeleteRequest: (sk: string) => void;
   onEditRequest: (item: BoardItem) => void;
   onReplyPosted: (reply: BoardItem) => void;
+  onSignIn: () => void;
 }) {
   const { post, replies } = thread;
   const [showReply, setShowReply] = useState(false);
@@ -133,7 +135,7 @@ function ThreadCard({
   };
 
   const isOwnPost = currentUserId && post.SK.endsWith(`#${currentUserId}`);
-  const canDmPost = currentUserId && !isOwnPost && post.user_id;
+  const showDmButton = !isOwnPost && post.user_id;
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
@@ -143,13 +145,22 @@ function ThreadCard({
           <span className="text-xs font-semibold text-gray-700 shrink-0">
             {post.display_name || "匿名"}
           </span>
-          {canDmPost && (
-            <Link
-              href={`/dm/compose?to=${post.user_id}`}
-              className="text-xs text-blue-500 hover:text-blue-700 hover:underline shrink-0"
-            >
-              この方にDMを送る
-            </Link>
+          {showDmButton && (
+            currentUserId ? (
+              <Link
+                href={`/dm/compose?to=${post.user_id}`}
+                className="text-xs text-blue-500 hover:text-blue-700 hover:underline shrink-0"
+              >
+                この方にDMを送る
+              </Link>
+            ) : (
+              <button
+                onClick={onSignIn}
+                className="text-xs text-blue-500 hover:text-blue-700 hover:underline shrink-0"
+              >
+                この方にDMを送る
+              </button>
+            )
           )}
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
@@ -295,7 +306,7 @@ export function HackathonBoard({
   sourceId: string;
   title: string;
 }) {
-  const { user, name, signIn } = useAuth();
+  const { user, name, signIn, hasCustomDisplayName } = useAuth();
   const [tab, setTab] = useState<TabType>("team");
   const [items, setItems] = useState<BoardItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -372,8 +383,29 @@ export function HackathonBoard({
         : (editingItem.board_type as "TEAM" | "REPORT"))
     : (tab === "team" ? "TEAM" : "REPORT");
 
+  const showProfileBanner = !!user && !hasCustomDisplayName && tab === "team";
+
   return (
     <div className="mt-8">
+      {/* Profile setup banner */}
+      {showProfileBanner && (
+        <div className="mb-4 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <span className="mt-0.5 text-amber-500 text-base leading-none">⚠️</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-amber-800">プロフィールを設定してください</p>
+            <p className="text-xs text-amber-700 mt-0.5">
+              チームメンバーがあなたを識別できるよう、表示名を設定しておくことをおすすめします。
+            </p>
+          </div>
+          <Link
+            href="/mypage/profile"
+            className="shrink-0 text-xs font-medium text-amber-700 underline hover:text-amber-900 whitespace-nowrap mt-0.5"
+          >
+            設定する →
+          </Link>
+        </div>
+      )}
+
       {/* Tab header + post button */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex rounded-xl overflow-hidden border border-gray-200">
@@ -441,6 +473,7 @@ export function HackathonBoard({
               onDeleteRequest={setDeletingsk}
               onEditRequest={setEditingItem}
               onReplyPosted={handleReplyPosted}
+              onSignIn={signIn}
             />
           ))}
         </div>
