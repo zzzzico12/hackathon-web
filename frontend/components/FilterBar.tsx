@@ -127,14 +127,12 @@ export function FilterBar({ activeTab = "hackathons" }: { activeTab?: string }) 
         options={THEME_OPTIONS}
         onChange={(v) => setParam("theme", v)}
       />
-      {!isPast && (
-        <Select
-          label="並び順"
-          value={current("sort")}
-          options={SORT_OPTIONS}
-          onChange={(v) => setParam("sort", v)}
-        />
-      )}
+      <Select
+        label="並び順"
+        value={current("sort")}
+        options={SORT_OPTIONS}
+        onChange={(v) => setParam("sort", v)}
+      />
       <label className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer select-none">
         <input
           type="checkbox"

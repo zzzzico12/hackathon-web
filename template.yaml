@@ -600,6 +600,20 @@ Resources:
             ScheduleExpression: "cron(0 22 * * ? *)"   # JST 毎日 07:00
             ScheduleExpressionTimezone: UTC
 
+  CraftStadiumCollector:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: hackathon-craftstadium-collector
+      CodeUri: lambdas/collectors/craftstadium/
+      Handler: app.handler
+      Role: !GetAtt CollectorRole.Arn
+      Events:
+        DailySchedule:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: "cron(15 22 * * ? *)"   # JST 毎日 07:15
+            ScheduleExpressionTimezone: UTC
+
   StatusUpdaterFunction:
     Type: AWS::Serverless::Function
     Properties:
