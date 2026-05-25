@@ -7,10 +7,12 @@ export function HackathonCalendar({
   items,
   month,
   sp,
+  backHref,
 }: {
   items: Hackathon[];
   month: string; // "YYYY-MM"
   sp: Record<string, string | undefined>;
+  backHref?: string;
 }) {
   const [yearStr, monStr] = month.split("-");
   const year = parseInt(yearStr);
@@ -124,16 +126,21 @@ export function HackathonCalendar({
                     {day}
                   </div>
                   <div className="space-y-0.5">
-                    {hackathons.map((h) => (
-                      <Link
-                        key={h.source_id}
-                        href={`/hackathons/${encodeURIComponent(h.source_id)}`}
-                        className="block text-[10px] leading-snug px-1 py-0.5 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 truncate transition-colors"
-                        title={h.title}
-                      >
-                        {h.title}
-                      </Link>
-                    ))}
+                    {hackathons.map((h) => {
+                      const href = backHref
+                        ? `/hackathons/${encodeURIComponent(h.source_id)}?back=${encodeURIComponent(backHref)}`
+                        : `/hackathons/${encodeURIComponent(h.source_id)}`;
+                      return (
+                        <Link
+                          key={h.source_id}
+                          href={href}
+                          className="block text-[10px] leading-snug px-1 py-0.5 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 truncate transition-colors"
+                          title={h.title}
+                        >
+                          {h.title}
+                        </Link>
+                      );
+                    })}
                   </div>
                 </>
               )}

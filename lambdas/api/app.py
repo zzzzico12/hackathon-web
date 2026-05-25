@@ -63,12 +63,20 @@ def list_hackathons(qs: dict) -> dict:
 
     if online in ("true", "false"):
         online_status = "ONLINE" if online == "true" else "OFFLINE"
+        # online_status-start_date-index は status を含まないので FilterExpression に追加
+        if status and status != "ALL":
+            sf = Attr("status").eq(status)
+            filter_expr = filter_expr & sf if filter_expr else sf
         items, last_key = query_index(
             "online_status-start_date-index",
             Key("online_status").eq(online_status),
             filter_expr, limit, exclusive_start,
         )
     elif prize in ("NO_PRIZE", "SMALL", "LARGE"):
+        # prize_bucket-start_date-index も同様
+        if status and status != "ALL":
+            sf = Attr("status").eq(status)
+            filter_expr = filter_expr & sf if filter_expr else sf
         items, last_key = query_index(
             "prize_bucket-start_date-index",
             Key("prize_bucket").eq(prize),

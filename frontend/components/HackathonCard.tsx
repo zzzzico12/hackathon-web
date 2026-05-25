@@ -5,14 +5,18 @@ import { DeadlineCountdown } from "@/components/DeadlineCountdown";
 
 interface Props {
   hackathon: Hackathon;
+  backHref?: string;
 }
 
-export function HackathonCard({ hackathon: h }: Props) {
+export function HackathonCard({ hackathon: h, backHref }: Props) {
   const sourceId = encodeURIComponent(h.source_id);
+  const detailHref = backHref
+    ? `/hackathons/${sourceId}?back=${encodeURIComponent(backHref)}`
+    : `/hackathons/${sourceId}`;
 
   return (
     <Link
-      href={`/hackathons/${sourceId}`}
+      href={detailHref}
       className="block bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow p-5"
     >
       <div className="flex items-start justify-between gap-3">

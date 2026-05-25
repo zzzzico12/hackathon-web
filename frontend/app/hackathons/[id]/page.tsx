@@ -7,6 +7,7 @@ import { HackathonBoard } from "@/components/HackathonBoard";
 
 interface Props {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ [key: string]: string | undefined }>;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -24,8 +25,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function HackathonDetail({ params }: Props) {
+export default async function HackathonDetail({ params, searchParams }: Props) {
   const { id } = await params;
+  const sp = await searchParams;
+  const backHref = sp.back ? decodeURIComponent(sp.back) : "/";
   const sourceId = decodeURIComponent(id);
 
   const h = await fetchHackathon(sourceId).catch(() => null);
@@ -70,7 +73,7 @@ export default async function HackathonDetail({ params }: Props) {
       />
       <header className="bg-white border-b border-gray-100 sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-4 py-4">
-          <Link href="/" className="text-sm text-blue-600 hover:underline">
+          <Link href={backHref} className="text-sm text-blue-600 hover:underline">
             ← 一覧に戻る
           </Link>
         </div>

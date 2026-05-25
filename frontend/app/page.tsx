@@ -109,6 +109,14 @@ async function HackathonTab({
 
   const updatedAt = formatDataUpdatedAt(data.items);
 
+  // フィルタ状態を詳細ページから保持するための戻り先URL
+  const backSearch = new URLSearchParams(
+    Object.entries(sp).filter(
+      ([k, v]) => v !== undefined && k !== "next_token"
+    ) as [string, string][]
+  ).toString();
+  const backHref = backSearch ? `/?${backSearch}` : "/";
+
   const buildUrl = (overrides: Record<string, string | undefined>) => {
     const p = new URLSearchParams(
       Object.entries(sp).filter(([, v]) => v !== undefined) as [string, string][]
@@ -157,7 +165,7 @@ async function HackathonTab({
       </div>
 
       {view === "calendar" ? (
-        <HackathonCalendar items={data.items} month={month} sp={sp} />
+        <HackathonCalendar items={data.items} month={month} sp={sp} backHref={backHref} />
       ) : (
         <>
           {data.items.length === 0 ? (
@@ -167,7 +175,7 @@ async function HackathonTab({
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {data.items.map((h) => (
-                <HackathonCard key={h.source_id} hackathon={h} />
+                <HackathonCard key={h.source_id} hackathon={h} backHref={backHref} />
               ))}
             </div>
           )}
