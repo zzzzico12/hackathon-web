@@ -1,6 +1,9 @@
 """
 Devpost API から日本関連ハッカソンを収集する Lambda。
-https://devpost.com/api/hackathons.json（非公式エンドポイント）
+
+WARNING: https://devpost.com/api/hackathons.json は非公式エンドポイント。
+公式ドキュメントが存在せず、Devpost 側の仕様変更で予告なく壊れる可能性がある。
+壊れた場合はレスポンス構造の変化を確認すること。
 """
 import json
 import os
@@ -10,6 +13,8 @@ import requests
 from datetime import datetime
 
 QUEUE_URL = os.environ.get("DEDUP_QUEUE_URL", "")
+# 換算レートは環境変数で上書き可能（デフォルト150）
+USD_TO_JPY = int(os.environ.get("USD_TO_JPY", "150"))
 
 sqs = boto3.client("sqs")
 
@@ -146,7 +151,7 @@ def parse_dates(date_str: str) -> tuple:
 
 
 def parse_prize_usd(prize_str: str) -> int:
-    """'$50,000 in prizes' → 円換算（1USD≈150JPY）"""
+    """'$50,000 in prizes' → 円換算（USD_TO_JPY 環境変数で換算レートを調整可能）"""
     if not prize_str:
         return 0
     m = re.search(r"\$([0-9,]+)", prize_str)
@@ -154,7 +159,7 @@ def parse_prize_usd(prize_str: str) -> int:
         return 0
     try:
         usd = int(m.group(1).replace(",", ""))
-        return usd * 150  # 概算JPY
+        return usd * USD_TO_JPY
     except ValueError:
         return 0
 

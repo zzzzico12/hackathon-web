@@ -74,16 +74,46 @@ def enqueue(url: str):
     )
 
 
-def handler(event, context):
-    try:
-        resp = requests.get(LIST_URL, timeout=30, headers={"User-Agent": "Mozilla/5.0"})
-        resp.raise_for_status()
-    except Exception as e:
-        print(f"[craftstadium] fetch failed: {e}")
-        return {"statusCode": 500, "error": str(e)}
+MAX_PAGES = 10
 
-    urls = extract_event_urls(resp.text)
-    print(f"[craftstadium] found {len(urls)} event URLs")
+
+def fetch_all_urls() -> list[str]:
+    """一覧ページを ?page=N でたどり、全イベントURLを収集する。
+    ページが存在しない場合や前ページと同一URLセットが返った場合は終了。"""
+    all_seen: set[str] = set()
+    all_urls: list[str] = []
+
+    for page in range(1, MAX_PAGES + 1):
+        page_url = LIST_URL if page == 1 else f"{LIST_URL}?page={page}"
+        try:
+            resp = requests.get(page_url, timeout=30, headers={"User-Agent": "Mozilla/5.0"})
+            resp.raise_for_status()
+        except Exception as e:
+            print(f"[craftstadium] fetch failed (page={page}): {e}")
+            break
+
+        page_urls = extract_event_urls(resp.text)
+        new_urls = [u for u in page_urls if u not in all_seen]
+
+        if not new_urls:
+            # 新URLゼロ = ページが存在しないか1ページ目にリダイレクトされた
+            break
+
+        for u in new_urls:
+            all_seen.add(u)
+            all_urls.append(u)
+
+        print(f"[craftstadium] page={page} new={len(new_urls)}")
+
+        if len(page_urls) == 0:
+            break
+
+    return all_urls
+
+
+def handler(event, context):
+    urls = fetch_all_urls()
+    print(f"[craftstadium] total {len(urls)} event URLs")
 
     for url in urls:
         enqueue(url)

@@ -4,7 +4,7 @@ https://www.doorkeeper.jp/developer/api
 """
 import json
 import os
-import sys
+import time
 import boto3
 import requests
 from datetime import datetime, timedelta
@@ -70,18 +70,29 @@ def fetch_events(keyword: str) -> list:
     per_page = 100
 
     while True:
-        resp = requests.get(
-            DOORKEEPER_API,
-            params={
-                "q": keyword,
-                "page": page,
-                "per_page": per_page,
-                "locale": "ja",
-            },
-            headers={"Accept": "application/json"},
-            timeout=30,
-        )
-        resp.raise_for_status()
+        for attempt in range(4):
+            resp = requests.get(
+                DOORKEEPER_API,
+                params={
+                    "q": keyword,
+                    "page": page,
+                    "per_page": per_page,
+                    "locale": "ja",
+                },
+                headers={"Accept": "application/json"},
+                timeout=30,
+            )
+            if resp.status_code == 429:
+                wait = 10 * (2 ** attempt)
+                print(f"[doorkeeper] 429 rate limit (attempt {attempt+1}), waiting {wait}s...")
+                time.sleep(wait)
+                continue
+            resp.raise_for_status()
+            break
+        else:
+            print(f"[doorkeeper] gave up after rate limit retries at page={page}")
+            break
+
         data = resp.json()
         if not data:
             break
@@ -95,6 +106,7 @@ def fetch_events(keyword: str) -> list:
         if len(data) < per_page:
             break
         page += 1
+        time.sleep(1)
 
     return results
 

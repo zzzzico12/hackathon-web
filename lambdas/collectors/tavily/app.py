@@ -35,8 +35,15 @@ def _queries() -> list[str]:
         f"アイデアソン {year}",
     ]
 
-# connpass/Doorkeeper/Devpostは別途APIで取得するのでスキップ
-SKIP_DOMAINS = {"connpass.com", "doorkeeper.jp", "devpost.com"}
+# 専用コレクターが存在するソースは二重送信を避けるためスキップ
+SKIP_DOMAINS = {
+    "connpass.com",
+    "doorkeeper.jp",
+    "devpost.com",
+    "craftstadium.com",
+    "techplay.jp",
+    "aifestival.jp",
+}
 
 
 def handler(event, context):

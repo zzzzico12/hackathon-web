@@ -21,9 +21,7 @@ LIST_URL = f"{BASE_URL}/hackathon"
 # /hackathon/<slug> 形式のみ（/hackathon 自体はリストページなのでスキップ）
 _EVENT_PATH_RE = re.compile(r"^/hackathon/[^/?#]+$")
 
-# Wix SPA のため静的HTMLにはリンクが少ない。既知ラウンドURLを補完
-_YEAR = datetime.utcnow().year
-SEED_URLS = [f"{BASE_URL}/hackathon/entry-{_YEAR}-{i}" for i in range(1, 7)]
+_SEED_ROUNDS = 11  # entry-{year}-1 〜 entry-{year}-10 まで試みる
 
 
 class _LinkParser(HTMLParser):
@@ -77,6 +75,10 @@ def enqueue(url: str):
 
 
 def handler(event, context):
+    # ハンドラ内で年を取得することで年またぎの Lambda ウォームスタートに対応
+    year = datetime.utcnow().year
+    seed_urls = [f"{BASE_URL}/hackathon/entry-{year}-{i}" for i in range(1, _SEED_ROUNDS)]
+
     try:
         resp = requests.get(LIST_URL, timeout=30, headers={"User-Agent": "Mozilla/5.0"})
         resp.raise_for_status()
@@ -86,8 +88,8 @@ def handler(event, context):
         dynamic_urls = []
 
     # 静的HTMLで見つかったURLと既知のシードURLをマージ
-    all_urls = list(dict.fromkeys(SEED_URLS + dynamic_urls))
-    print(f"[aifestival] enqueuing {len(all_urls)} URLs (seed={len(SEED_URLS)}, dynamic={len(dynamic_urls)})")
+    all_urls = list(dict.fromkeys(seed_urls + dynamic_urls))
+    print(f"[aifestival] enqueuing {len(all_urls)} URLs (seed={len(seed_urls)}, dynamic={len(dynamic_urls)})")
 
     for url in all_urls:
         enqueue(url)
