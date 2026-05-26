@@ -69,7 +69,11 @@ export default async function HackathonDetail({ params, searchParams }: Props) {
     <main className="min-h-screen bg-gray-50">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{
+          // JSON.stringify は </ をエスケープしないため </script> でタグが閉じられてしまう。
+          // <\/ に置換することで script タグ注入を防ぐ（JSON として有効）。
+          __html: JSON.stringify(jsonLd).replace(/<\//g, "<\\/"),
+        }}
       />
       <header className="bg-white border-b border-gray-100 sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-4 py-4">

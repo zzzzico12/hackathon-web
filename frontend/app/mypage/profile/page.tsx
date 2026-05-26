@@ -75,6 +75,7 @@ export default function ProfilePage() {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
+        body: JSON.stringify({ content_type: file.type }),
       });
       if (!presignRes.ok) throw new Error("presign failed");
       const { upload_url } = await presignRes.json();

@@ -127,12 +127,22 @@ def delete_action(event):
     return resp(200, {"deleted": sk})
 
 
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+
 def presign_avatar(event):
     user_id = get_user_id(event)
+    try:
+        body = json.loads(event.get("body") or "{}")
+    except json.JSONDecodeError:
+        body = {}
+    content_type = body.get("content_type", "image/jpeg").strip()
+    if content_type not in ALLOWED_IMAGE_TYPES:
+        return resp(400, {"error": "unsupported image type"})
+
     key = f"avatars/{user_id}/avatar.jpg"
     upload_url = s3.generate_presigned_url(
         "put_object",
-        Params={"Bucket": AVATAR_BUCKET, "Key": key},
+        Params={"Bucket": AVATAR_BUCKET, "Key": key, "ContentType": content_type},
         ExpiresIn=300,
     )
     avatar_url = f"https://{AVATAR_BUCKET}.s3.{REGION}.amazonaws.com/{key}"

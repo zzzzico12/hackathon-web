@@ -147,8 +147,8 @@ def post_item(event, hackathon_id):
         "SK": sk,
         "board_type": item_board_type,
         "user_id": user_id,
-        "display_name": body.get("display_name", ""),
-        "hackathon_title": body.get("hackathon_title", ""),
+        "display_name": body.get("display_name", "")[:100],
+        "hackathon_title": body.get("hackathon_title", "")[:200],
         "body": content,
         "created_at": now,
     }
@@ -157,9 +157,11 @@ def post_item(event, hackathon_id):
     if board_type == "REPORT" and not parent_sk and body.get("rating") is not None:
         item["rating"] = max(1, min(5, int(body["rating"])))
     if board_type == "TEAM" and not parent_sk:
-        item["skills"] = body.get("skills", [])
-        item["wants"] = body.get("wants", [])
-        item["contact"] = body.get("contact", "")
+        raw_skills = body.get("skills", [])
+        raw_wants = body.get("wants", [])
+        item["skills"] = [str(s)[:50] for s in (raw_skills if isinstance(raw_skills, list) else [])][:20]
+        item["wants"] = [str(w)[:50] for w in (raw_wants if isinstance(raw_wants, list) else [])][:20]
+        item["contact"] = str(body.get("contact", ""))[:200]
 
     table.put_item(Item=item)
     return resp(201, {"SK": sk})
