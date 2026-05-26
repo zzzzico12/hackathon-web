@@ -132,6 +132,9 @@ async function HackathonTab({
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6">
+      {/* おすすめ：フィルタ・ビューに関係なく先頭に表示 */}
+      <RecommendedSection />
+
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <p className="text-sm text-gray-500">{data.count} 件表示</p>
@@ -169,12 +172,6 @@ async function HackathonTab({
         <HackathonCalendar items={data.items} month={month} sp={sp} backHref={backHref} />
       ) : (
         <>
-          {/* フィルタ未適用の UPCOMING 一覧のみおすすめを表示 */}
-          {params.status === "UPCOMING" &&
-            !params.online && !params.prize && !params.beginner &&
-            !params.theme && !params.q && !params.next_token && (
-              <RecommendedSection />
-          )}
           {data.items.length === 0 ? (
             <div className="text-center py-20 text-gray-400">
               該当するハッカソンが見つかりませんでした
