@@ -134,6 +134,7 @@ function ThreadCard({
 
   const isOwnPost = currentUserId && post.SK.endsWith(`#${currentUserId}`);
   const showDmButton = !!currentUserId && !isOwnPost && !!post.user_id;
+  const showPortfolioLink = !isOwnPost && !!post.user_id;
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
@@ -143,12 +144,20 @@ function ThreadCard({
           <span className="text-xs font-semibold text-gray-700 shrink-0">
             {post.display_name || "匿名"}
           </span>
+          {showPortfolioLink && (
+            <Link
+              href={`/users/${post.user_id}`}
+              className="text-xs text-gray-400 hover:text-blue-600 hover:underline shrink-0"
+            >
+              ポートフォリオ
+            </Link>
+          )}
           {showDmButton && (
             <Link
               href={`/dm?with=${post.user_id}&name=${encodeURIComponent(post.display_name || "匿名")}`}
               className="text-xs text-blue-500 hover:text-blue-700 hover:underline shrink-0"
             >
-              この方にDMを送る
+              DMを送る
             </Link>
           )}
         </div>

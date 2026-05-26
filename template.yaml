@@ -470,6 +470,34 @@ Resources:
                 Resource:
                   - !GetAtt DmTable.Arn
 
+  PortfolioRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: portfolio-policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:Query
+                Resource:
+                  - !GetAtt UserDataTable.Arn
+                  - !GetAtt HackathonsTable.Arn
+                  - !Sub "${HackathonsTable.Arn}/index/*"
+                  - !GetAtt BoardTable.Arn
+                  - !Sub "${BoardTable.Arn}/index/*"
+
   BoardRole:
     Type: AWS::IAM::Role
     Properties:
@@ -823,6 +851,35 @@ Resources:
             Method: GET
             Auth:
               Authorizer: CognitoAuthorizer
+
+  PortfolioFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: hackathon-portfolio
+      CodeUri: lambdas/portfolio/
+      Handler: app.handler
+      Role: !GetAtt PortfolioRole.Arn
+      Timeout: 15
+      MemorySize: 128
+      Environment:
+        Variables:
+          USER_DATA_TABLE: !Ref UserDataTable
+          HACKATHONS_TABLE: !Ref HackathonsTable
+          BOARD_TABLE: !Ref BoardTable
+          AVATAR_BUCKET: !Ref AvatarBucket
+      Events:
+        GetPortfolio:
+          Type: Api
+          Properties:
+            RestApiId: !Ref HackathonApi
+            Path: /users/{user_id}
+            Method: GET
+        OptionsPortfolio:
+          Type: Api
+          Properties:
+            RestApiId: !Ref HackathonApi
+            Path: /users/{user_id}
+            Method: OPTIONS
 
   BoardFunction:
     Type: AWS::Serverless::Function
