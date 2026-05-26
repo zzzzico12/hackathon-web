@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Heart, Trophy, CheckCircle2, FileText, ChevronRight, LogIn } from "lucide-react";
+import { Heart, Trophy, CheckCircle2, FileText, ChevronRight, LogIn, ExternalLink } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import { useUserData } from "@/lib/useUserData";
 import { HackathonCard } from "@/components/HackathonCard";
@@ -151,6 +151,24 @@ export default function MyPage() {
               <p className="text-xs text-gray-500 mt-0.5">メモ</p>
             </div>
           </div>
+        </div>
+
+        {/* Portfolio + Profile links */}
+        <div className="flex flex-wrap gap-3">
+          <Link
+            href={`/users/${user.userId}`}
+            target="_blank"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-blue-200 bg-white text-sm text-blue-600 font-medium hover:bg-blue-50 transition-colors"
+          >
+            <ExternalLink size={14} />
+            公開ポートフォリオを見る
+          </Link>
+          <Link
+            href="/mypage/profile"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-gray-200 bg-white text-sm text-gray-600 font-medium hover:bg-gray-50 transition-colors"
+          >
+            プロフィール設定
+          </Link>
         </div>
 
         {/* Sections — display order: FAV, APPLIED, DONE */}

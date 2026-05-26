@@ -172,19 +172,6 @@ export default function ProfilePage() {
           />
         </div>
 
-        {/* Portfolio link */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-          <p className="text-sm font-semibold text-gray-700 mb-1">公開ポートフォリオ</p>
-          <p className="text-xs text-gray-400 mb-3">参加済みのハッカソンとレポートが公開されます</p>
-          <Link
-            href={`/users/${user.userId}`}
-            target="_blank"
-            className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:underline"
-          >
-            ポートフォリオを見る →
-          </Link>
-        </div>
-
         {/* Name edit */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
           <p className="text-sm font-semibold text-gray-700 mb-4">表示名</p>
