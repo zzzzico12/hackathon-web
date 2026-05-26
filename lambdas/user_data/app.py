@@ -5,13 +5,15 @@ from urllib.parse import unquote
 
 import boto3
 import botocore.config
-from boto3.dynamodb.conditions import Key
+from boto3.dynamodb.conditions import Attr, Key
 
 TABLE_NAME = os.environ["USER_DATA_TABLE"]
+HACKATHONS_TABLE_NAME = os.environ.get("HACKATHONS_TABLE", "")
 AVATAR_BUCKET = os.environ.get("AVATAR_BUCKET", "")
 REGION = os.environ.get("AWS_REGION", "ap-northeast-1")
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(TABLE_NAME)
+hackathon_table = dynamodb.Table(HACKATHONS_TABLE_NAME) if HACKATHONS_TABLE_NAME else None
 # endpoint_url forces presigned URLs to use the regional endpoint.
 # Without it, boto3 generates s3.amazonaws.com (global) which returns
 # no CORS headers for buckets outside us-east-1.
@@ -47,6 +49,9 @@ def handler(event, _ctx):
 
     if path == "/user/me":
         return get_me(event)
+    if path == "/user/recommendations":
+        if method == "GET":
+            return get_recommendations(event)
     if path == "/user/avatar/presign":
         if method == "POST":
             return presign_avatar(event)
@@ -161,3 +166,67 @@ def get_me(event):
             if sk.startswith(f"{t}#"):
                 counts[t] += 1
     return resp(200, counts)
+
+
+def get_recommendations(event):
+    """FAV/DONE済みハッカソンのテーマからおすすめUPCOMINGイベントを返す。"""
+    if not hackathon_table:
+        return resp(200, {"items": [], "themes": []})
+
+    user_id = get_user_id(event)
+
+    # 1. ユーザーの全アクションを取得
+    result = table.query(KeyConditionExpression=Key("user_id").eq(user_id))
+    user_items = result.get("Items", [])
+
+    liked_ids = []   # テーマ抽出対象（FAV/DONE）
+    excluded_ids = set()  # おすすめから除外（FAV/DONE/APPLIED）
+    for item in user_items:
+        sk = item.get("SK", "")
+        if sk.startswith("FAV#"):
+            sid = sk[4:]
+            liked_ids.append(sid)
+            excluded_ids.add(sid)
+        elif sk.startswith("DONE#"):
+            sid = sk[5:]
+            liked_ids.append(sid)
+            excluded_ids.add(sid)
+        elif sk.startswith("APPLIED#"):
+            excluded_ids.add(sk[8:])
+
+    if not liked_ids:
+        return resp(200, {"items": [], "themes": []})
+
+    # 2. liked ハッカソンのテーマを集計（最大10件を参照）
+    theme_count: dict[str, int] = {}
+    for sid in liked_ids[:10]:
+        r = hackathon_table.query(
+            KeyConditionExpression=Key("source_id").eq(sid),
+            ProjectionExpression="themes",
+        )
+        for h in r.get("Items", []):
+            for t in h.get("themes", []):
+                theme_count[t] = theme_count.get(t, 0) + 1
+
+    if not theme_count:
+        return resp(200, {"items": [], "themes": []})
+
+    top_themes = sorted(theme_count, key=lambda t: -theme_count[t])[:3]
+
+    # 3. UPCOMING かつ top_themes に一致するハッカソンを取得
+    filter_expr = None
+    for t in top_themes:
+        cond = Attr("themes").contains(t)
+        filter_expr = cond if filter_expr is None else (filter_expr | cond)
+
+    r = hackathon_table.query(
+        IndexName="status-start_date-index",
+        KeyConditionExpression=Key("status").eq("UPCOMING"),
+        FilterExpression=filter_expr,
+        ScanIndexForward=True,
+        Limit=60,
+    )
+
+    # 4. 除外リストを引いてtop 5を返す
+    candidates = [h for h in r.get("Items", []) if h.get("source_id") not in excluded_ids]
+    return resp(200, {"items": candidates[:5], "themes": top_themes})

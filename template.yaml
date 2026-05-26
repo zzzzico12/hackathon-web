@@ -433,6 +433,13 @@ Resources:
                   - !GetAtt UserDataTable.Arn
               - Effect: Allow
                 Action:
+                  - dynamodb:GetItem
+                  - dynamodb:Query
+                Resource:
+                  - !GetAtt HackathonsTable.Arn
+                  - !Sub "${HackathonsTable.Arn}/index/*"
+              - Effect: Allow
+                Action:
                   - s3:PutObject
                 Resource:
                   - !Sub "arn:aws:s3:::${AvatarBucket}/*"
@@ -766,6 +773,7 @@ Resources:
         Variables:
           USER_DATA_TABLE: !Ref UserDataTable
           AVATAR_BUCKET: !Ref AvatarBucket
+          HACKATHONS_TABLE: !Ref HackathonsTable
       Events:
         GetAll:
           Type: Api
@@ -805,6 +813,14 @@ Resources:
             RestApiId: !Ref HackathonApi
             Path: /user/avatar/presign
             Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
+        GetRecommendations:
+          Type: Api
+          Properties:
+            RestApiId: !Ref HackathonApi
+            Path: /user/recommendations
+            Method: GET
             Auth:
               Authorizer: CognitoAuthorizer
 

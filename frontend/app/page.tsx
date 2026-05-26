@@ -7,6 +7,7 @@ import { HackathonCalendar } from "@/components/HackathonCalendar";
 import { FilterBar } from "@/components/FilterBar";
 import { TabBar, type TabKey } from "@/components/TabBar";
 import { BoardGlobalTab } from "@/components/BoardGlobalTab";
+import { RecommendedSection } from "@/components/RecommendedSection";
 import type { FilterParams, PrizeBucket } from "@/lib/types";
 
 export const metadata: Metadata = {
@@ -168,6 +169,12 @@ async function HackathonTab({
         <HackathonCalendar items={data.items} month={month} sp={sp} backHref={backHref} />
       ) : (
         <>
+          {/* フィルタ未適用の UPCOMING 一覧のみおすすめを表示 */}
+          {params.status === "UPCOMING" &&
+            !params.online && !params.prize && !params.beginner &&
+            !params.theme && !params.q && !params.next_token && (
+              <RecommendedSection />
+          )}
           {data.items.length === 0 ? (
             <div className="text-center py-20 text-gray-400">
               該当するハッカソンが見つかりませんでした
