@@ -628,6 +628,20 @@ Resources:
             ScheduleExpression: "cron(20 22 * * ? *)"   # JST 毎日 07:20
             ScheduleExpressionTimezone: UTC
 
+  TechPlayCollector:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: hackathon-techplay-collector
+      CodeUri: lambdas/collectors/techplay/
+      Handler: app.handler
+      Role: !GetAtt CollectorRole.Arn
+      Events:
+        DailySchedule:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: "cron(25 22 * * ? *)"   # JST 毎日 07:25
+            ScheduleExpressionTimezone: UTC
+
   StatusUpdaterFunction:
     Type: AWS::Serverless::Function
     Properties:
