@@ -614,6 +614,20 @@ Resources:
             ScheduleExpression: "cron(15 22 * * ? *)"   # JST 毎日 07:15
             ScheduleExpressionTimezone: UTC
 
+  AiFestivalCollector:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: hackathon-aifestival-collector
+      CodeUri: lambdas/collectors/aifestival/
+      Handler: app.handler
+      Role: !GetAtt CollectorRole.Arn
+      Events:
+        DailySchedule:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: "cron(20 22 * * ? *)"   # JST 毎日 07:20
+            ScheduleExpressionTimezone: UTC
+
   StatusUpdaterFunction:
     Type: AWS::Serverless::Function
     Properties:

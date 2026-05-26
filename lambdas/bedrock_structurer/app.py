@@ -74,29 +74,37 @@ def process(body: dict):
 
 def extract_with_bedrock(url: str, title: str, content: str) -> dict | None:
     prompt = EXTRACT_PROMPT.format(url=url, title=title, content=content)
+
+    # API 呼び出しは try の外 — 空レスポンス/ネットワーク障害は再 raise して SQS にリトライさせる
+    resp = bedrock.invoke_model(
+        modelId=MODEL_ID,
+        body=json.dumps({
+            "anthropic_version": "bedrock-2023-05-31",
+            "max_tokens": 1024,
+            "system": SYSTEM_PROMPT,
+            "messages": [{"role": "user", "content": prompt}],
+        }),
+    )
+    raw = resp["body"].read()
+    if not raw:
+        raise RuntimeError(f"[bedrock_structurer] empty response from Bedrock for {url}")
+    result = json.loads(raw)  # 失敗 = Bedrock 側の問題 → 再 raise
+
+    # モデル出力のパースは try の中 — 「ハッカソンでない」判定はリトライ不要
     try:
-        resp = bedrock.invoke_model(
-            modelId=MODEL_ID,
-            body=json.dumps({
-                "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 1024,
-                "system": SYSTEM_PROMPT,
-                "messages": [{"role": "user", "content": prompt}],
-            }),
-        )
-        result = json.loads(resp["body"].read())
         text = result["content"][0]["text"].strip()
         if not text:
             return None
         # コードブロックを除去して最初のJSONオブジェクトを抽出
-        text = text.strip("```json").strip("```").strip()
+        if text.startswith("```"):
+            text = re.sub(r"^```[a-z]*\n?", "", text).rstrip("`").strip()
         start = text.find("{")
         end = text.rfind("}") + 1
         if start == -1 or end == 0 or start >= end:
             return None
         return json.loads(text[start:end])
     except Exception as e:
-        print(f"[bedrock_structurer] bedrock error for {url}: {e}")
+        print(f"[bedrock_structurer] parse error for {url}: {e}")
         return None
 
 
