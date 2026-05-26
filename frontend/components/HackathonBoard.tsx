@@ -295,10 +295,10 @@ export function HackathonBoard({
   sourceId: string;
   title: string;
 }) {
-  const { user, name, signIn, hasCustomDisplayName } = useAuth();
+  const { user, name, signIn, hasCustomDisplayName, loading: authLoading } = useAuth();
   const [tab, setTab] = useState<TabType>("team");
   const [items, setItems] = useState<BoardItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [showPostModal, setShowPostModal] = useState(false);
   const [editingItem, setEditingItem] = useState<BoardItem | null>(null);
   const [deletingsk, setDeletingsk] = useState<string | null>(null);
@@ -306,8 +306,10 @@ export function HackathonBoard({
   const fetchItems = useCallback(
     async (t: TabType) => {
       setLoading(true);
+      const token = await getToken();
       const res = await fetch(
-        `${API}/hackathons/${encodeURIComponent(sourceId)}/board?tab=${t}`
+        `${API}/hackathons/${encodeURIComponent(sourceId)}/board?tab=${t}`,
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} }
       ).catch(() => null);
       if (res?.ok) {
         const data = await res.json();
@@ -321,8 +323,9 @@ export function HackathonBoard({
   );
 
   useEffect(() => {
-    fetchItems(tab);
-  }, [fetchItems, tab]);
+    if (user) fetchItems(tab);
+    else setItems([]);
+  }, [fetchItems, tab, user]);
 
   const threads = useMemo<Thread[]>(() => {
     const parents = items.filter((i) => !i.parent_sk);
@@ -430,7 +433,29 @@ export function HackathonBoard({
       </div>
 
       {/* Content */}
-      {loading ? (
+      {authLoading ? (
+        <div className="space-y-3">
+          {[1, 2].map((i) => (
+            <div key={i} className="bg-white rounded-2xl border border-gray-100 p-4 animate-pulse h-24" />
+          ))}
+        </div>
+      ) : !user ? (
+        <div className="bg-white rounded-2xl border border-gray-100 py-12 text-center">
+          <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center mx-auto mb-3">
+            <Users size={18} className="text-blue-400" />
+          </div>
+          <p className="text-sm font-medium text-gray-700 mb-1">
+            {tab === "team" ? "チーム募集を閲覧するにはログインが必要です" : "参加レポートを閲覧するにはログインが必要です"}
+          </p>
+          <p className="text-xs text-gray-400 mb-4">ログインして仲間を探したり、レポートを読もう</p>
+          <button
+            onClick={signIn}
+            className="text-sm px-5 py-2 rounded-full bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors"
+          >
+            ログインする
+          </button>
+        </div>
+      ) : loading ? (
         <div className="space-y-3">
           {[1, 2].map((i) => (
             <div
