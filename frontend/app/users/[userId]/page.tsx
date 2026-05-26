@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import type { Metadata } from "next";
 import { User, Star, Trophy, Globe, MapPin } from "lucide-react";
 import { formatDate, formatPrize } from "@/lib/api";
@@ -91,15 +90,6 @@ export default async function PortfolioPage({ params }: Props) {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-10">
-        <div className="max-w-3xl mx-auto px-4 py-4 flex items-center gap-4">
-          <Link href="/" className="text-sm text-blue-600 hover:underline shrink-0">
-            ← トップへ
-          </Link>
-          <h1 className="text-base font-bold text-gray-900 truncate">ポートフォリオ</h1>
-        </div>
-      </header>
-
       <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
 
         {/* Profile card */}
