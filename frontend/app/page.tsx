@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { fetchHackathons } from "@/lib/api";
-import { HackathonCard } from "@/components/HackathonCard";
+import { HackathonListClient } from "@/components/HackathonListClient";
 import { HackathonCalendar } from "@/components/HackathonCalendar";
 import { FilterBar } from "@/components/FilterBar";
 import { TabBar, type TabKey } from "@/components/TabBar";
@@ -45,7 +45,6 @@ export default async function Home({ searchParams }: SearchParamsProps) {
     ...(sp.theme && { theme: sp.theme }),
     ...(sp.q && { q: sp.q }),
     ...(sp.sort && { sort: sp.sort as "date_asc" | "prize_desc" }),
-    ...(sp.next_token && { next_token: sp.next_token }),
     limit: view === "calendar" ? 100 : 24,
   };
 
@@ -171,38 +170,12 @@ async function HackathonTab({
       {view === "calendar" ? (
         <HackathonCalendar items={data.items} month={month} sp={sp} backHref={backHref} />
       ) : (
-        <>
-          {data.items.length === 0 ? (
-            <div className="text-center py-20 text-gray-400">
-              該当するハッカソンが見つかりませんでした
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {data.items.map((h) => (
-                <HackathonCard key={h.source_id} hackathon={h} backHref={backHref} />
-              ))}
-            </div>
-          )}
-
-          {data.next_token && data.items.length > 0 && (
-            <div className="mt-8 text-center">
-              <a
-                href={`/?${new URLSearchParams({
-                  ...Object.fromEntries(
-                    Object.entries(sp).filter(([, v]) => v !== undefined) as [
-                      string,
-                      string,
-                    ][]
-                  ),
-                  next_token: data.next_token,
-                })}`}
-                className="inline-block px-6 py-2 rounded-full bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
-              >
-                さらに読み込む
-              </a>
-            </div>
-          )}
-        </>
+        <HackathonListClient
+          initialItems={data.items}
+          initialNextToken={data.next_token}
+          backHref={backHref}
+          filterParams={params}
+        />
       )}
     </div>
   );
