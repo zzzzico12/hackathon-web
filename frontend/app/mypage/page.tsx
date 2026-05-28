@@ -121,7 +121,7 @@ export default function MyPage() {
   return (
     <main className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white border-b border-gray-100">
+      <header className="bg-white border-b border-gray-100 sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center gap-4">
           <Link href="/" className="text-sm text-blue-600 hover:underline shrink-0">
             ← 一覧に戻る
