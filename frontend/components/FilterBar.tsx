@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 
 const ONLINE_OPTIONS = [
   { label: "すべて", value: "" },
@@ -44,6 +44,10 @@ export function FilterBar({ activeTab = "hackathons" }: { activeTab?: string }) 
   const [searchInput, setSearchInput] = useState(
     () => searchParams.get("q") ?? ""
   );
+
+  useEffect(() => {
+    setSearchInput(searchParams.get("q") ?? "");
+  }, [searchParams]);
 
   const setParam = useCallback(
     (key: string, value: string) => {

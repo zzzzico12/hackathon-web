@@ -34,7 +34,10 @@ export default async function Home({ searchParams }: SearchParamsProps) {
   const view = sp.view === "calendar" ? "calendar" : "list";
 
   const now = new Date();
-  const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prevMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, "0")}`;
+  const defaultMonth = status === "PAST" ? prevMonth : currentMonth;
   const month = sp.month ?? defaultMonth;
 
   const params: FilterParams = {
@@ -171,6 +174,7 @@ async function HackathonTab({
         <HackathonCalendar items={data.items} month={month} sp={sp} backHref={backHref} />
       ) : (
         <HackathonListClient
+          key={[params.status, params.q, params.online, params.prize, params.theme, params.beginner, params.sort].join("|")}
           initialItems={data.items}
           initialNextToken={data.next_token}
           backHref={backHref}

@@ -15,6 +15,16 @@ export const metadata: Metadata = {
     locale: "ja_JP",
     type: "website",
   },
+  icons: {
+    apple: "/apple-touch-icon.png",
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-status-bar-style": "default",
+    "apple-mobile-web-app-title": "HackJP",
+    "theme-color": "#2563EB",
+  },
 };
 
 export default function RootLayout({
