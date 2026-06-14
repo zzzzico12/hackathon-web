@@ -93,10 +93,13 @@ def list_hackathons(qs: dict) -> dict:
         items = result.get("Items", [])
         last_key = result.get("LastEvaluatedKey")
     else:
+        # PAST は最新のものを先頭に（降順）、UPCOMING は開始日昇順
+        scan_forward = status != "PAST"
         items, last_key = query_index(
             "status-start_date-index",
             Key("status").eq(status),
             filter_expr, limit, exclusive_start,
+            scan_forward=scan_forward,
         )
 
     return resp(200, {
@@ -167,7 +170,7 @@ def _build_filter(beginner, theme, q):
     return filter_expr
 
 
-def query_index(index: str, key_cond, filter_expr, limit: int, exclusive_start):
+def query_index(index: str, key_cond, filter_expr, limit: int, exclusive_start, scan_forward: bool = True):
     items = []
     cursor = exclusive_start
     total_scanned = 0
@@ -180,7 +183,7 @@ def query_index(index: str, key_cond, filter_expr, limit: int, exclusive_start):
             "IndexName": index,
             "KeyConditionExpression": key_cond,
             "Limit": batch_size,
-            "ScanIndexForward": True,
+            "ScanIndexForward": scan_forward,
         }
         if filter_expr:
             kwargs["FilterExpression"] = filter_expr
