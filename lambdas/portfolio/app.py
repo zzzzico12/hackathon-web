@@ -48,14 +48,23 @@ def handler(event, context):
     if not user_id:
         return resp(400, {"error": "user_id required"})
 
-    # 1. DONE 済みイベントの source_id を取得
-    done_result = user_table.query(
+    # 1. DONE / APPLIED の source_id を取得（DONE 優先）
+    all_actions = user_table.query(
         KeyConditionExpression=Key("user_id").eq(user_id)
-        & Key("SK").begins_with("DONE#")
-    )
-    done_ids = [item["SK"][5:] for item in done_result.get("Items", [])]
+    ).get("Items", [])
 
-    if not done_ids:
+    # source_id → user_status (DONE が APPLIED より優先)
+    status_map: dict[str, str] = {}
+    for item in all_actions:
+        sk: str = item.get("SK", "")
+        if sk.startswith("DONE#"):
+            status_map[sk[5:]] = "DONE"
+        elif sk.startswith("APPLIED#") and sk[8:] not in status_map:
+            status_map[sk[8:]] = "APPLIED"
+
+    participated_ids = list(status_map.keys())
+
+    if not participated_ids:
         return resp(200, {
             "display_name": None,
             "avatar_url": None,
@@ -66,7 +75,7 @@ def handler(event, context):
 
     # 2. ハッカソン詳細を取得（最大20件）
     hackathons: dict[str, dict] = {}
-    for sid in done_ids[:20]:
+    for sid in participated_ids[:20]:
         r = hackathon_table.query(
             KeyConditionExpression=Key("source_id").eq(sid)
         )
@@ -92,7 +101,7 @@ def handler(event, context):
     # 4. ハッカソンリストを構築してテーマ集計
     theme_count: dict[str, int] = {}
     hackathon_list = []
-    for sid in done_ids:
+    for sid in participated_ids:
         h = hackathons.get(sid)
         if not h:
             continue
@@ -105,6 +114,7 @@ def handler(event, context):
             "themes": h.get("themes", []),
             "prize_amount": h.get("prize_amount", 0),
             "is_online": h.get("is_online", False),
+            "user_status": status_map.get(sid, "DONE"),
         }
         if sid in reports_by_hackathon:
             rp = reports_by_hackathon[sid]

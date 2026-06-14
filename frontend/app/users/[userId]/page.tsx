@@ -20,6 +20,7 @@ interface PortfolioHackathon {
   themes: string[];
   prize_amount: number;
   is_online: boolean;
+  user_status: "DONE" | "APPLIED";
   report?: Report;
 }
 
@@ -83,7 +84,7 @@ export default async function PortfolioPage({ params }: Props) {
   const { userId } = await params;
   const data = await fetchPortfolio(userId);
 
-  if (!data || data.hackathons.length === 0) notFound();
+  if (!data) notFound();
 
   const name = data.display_name ?? "匿名ユーザー";
   const pageUrl = `https://hackathon.zzzzico.click/users/${userId}`;
@@ -133,13 +134,27 @@ export default async function PortfolioPage({ params }: Props) {
         {/* Hackathon list */}
         <div>
           <h3 className="text-sm font-semibold text-gray-700 mb-3">
-            参加したハッカソン ({data.hackathons.length})
+            ハッカソン ({data.hackathons.length})
           </h3>
+          {data.hackathons.length === 0 ? (
+            <div className="text-center py-12 text-gray-400 text-sm bg-white rounded-2xl border border-gray-100">
+              まだハッカソンが登録されていません
+            </div>
+          ) : (
           <div className="space-y-3">
             {data.hackathons.map((h) => (
               <div key={h.source_id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+                        h.user_status === "DONE"
+                          ? "bg-purple-100 text-purple-700"
+                          : "bg-emerald-100 text-emerald-700"
+                      }`}>
+                        {h.user_status === "DONE" ? "参加済み" : "応募済み"}
+                      </span>
+                    </div>
                     <a
                       href={h.source_url}
                       target="_blank"
@@ -188,6 +203,7 @@ export default async function PortfolioPage({ params }: Props) {
               </div>
             ))}
           </div>
+          )}
         </div>
 
       </div>
