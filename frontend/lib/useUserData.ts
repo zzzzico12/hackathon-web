@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchAuthSession } from "aws-amplify/auth";
+import { apiFetch as fetchWithApiKey } from "@/lib/api";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/v1";
 
@@ -39,7 +40,7 @@ async function apiFetch(
   options: RequestInit = {}
 ): Promise<Response> {
   const token = await getToken();
-  return fetch(`${API}${path}`, {
+  return fetchWithApiKey(`${API}${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",

@@ -8,7 +8,7 @@ class Hackathon:
     source_id: str          # PK: "connpass#12345"
     title: str
     source_url: str
-    source_name: str        # connpass / doorkeeper / devpost / web
+    source_name: str        # connpass / doorkeeper / web
     start_date: str         # YYYY-MM-DD
     end_date: str           # YYYY-MM-DD
     entry_deadline: Optional[str] = None

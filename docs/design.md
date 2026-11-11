@@ -456,7 +456,7 @@ AWSフルマネージドで無料枠を最大限活用。DBはDynamoDBを最初�
 [Lambda: Orchestrator]
     ├── connpass API ──────────────────┐
     ├── Doorkeeper API ────────────────┤ 構造化済みデータ
-    ├── Devpost API (Japan絞り) ───────┤
+    ├── (Devpost API は規約上スクレイピング禁止のため停止) ─┤
     ├── Google Alerts RSS (ポーリング)──┤ URL + snippet
     └── SerpAPI (週1回) ──────────────┘ 新規サイト発見
         ↓
@@ -478,7 +478,7 @@ AWSフルマネージドで無料枠を最大限活用。DBはDynamoDBを最初�
 |--------|------|---------|
 | connpass | REST API | `keyword=ハッカソン&count=100` |
 | Doorkeeper | REST API | `q=hackathon` |
-| Devpost | REST API | `themes[]=hackathon&search=japan` |
+| ~~Devpost~~ | 停止 | 利用規約で自動取得が禁止されているため取得しない |
 
 ### Tier 2: Google Alerts RSS（毎日）
 設定するAlertキーワード（5〜10個）:

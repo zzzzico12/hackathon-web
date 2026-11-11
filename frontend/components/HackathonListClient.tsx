@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { HackathonCard } from "@/components/HackathonCard";
 import type { Hackathon, FilterParams } from "@/lib/types";
+import { apiFetch } from "@/lib/api";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/v1";
 
@@ -32,7 +33,7 @@ export function HackathonListClient({
       Object.entries(p).forEach(([k, v]) => {
         if (v !== undefined && v !== null && v !== "") qs.set(k, String(v));
       });
-      const res = await fetch(`${API_BASE}/hackathons?${qs}`).catch(() => null);
+      const res = await apiFetch(`${API_BASE}/hackathons?${qs}`).catch(() => null);
       if (!res || !res.ok) return;
       const data = await res.json();
       setItems((prev) => [...prev, ...data.items]);

@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { User, Star, Trophy, Globe, MapPin } from "lucide-react";
-import { formatDate, formatPrize } from "@/lib/api";
+import { formatDate, formatPrize, apiFetch } from "@/lib/api";
 import { ShareButton } from "./ShareButton";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/v1";
@@ -34,7 +34,7 @@ interface Portfolio {
 
 async function fetchPortfolio(userId: string): Promise<Portfolio | null> {
   try {
-    const res = await fetch(`${API}/users/${encodeURIComponent(userId)}`, {
+    const res = await apiFetch(`${API}/users/${encodeURIComponent(userId)}`, {
       next: { revalidate: 60 },
     });
     if (!res.ok) return null;

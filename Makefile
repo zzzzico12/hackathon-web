@@ -1,7 +1,7 @@
 .PHONY: build deploy local-connpass local-doorkeeper setup-ssm
 
 PROFILE = --profile otsuka
-PYENV   = PYENV_VERSION=3.11.11
+PYENV   = PYENV_VERSION=3.13.3
 
 build:
 	$(PYENV) sam build

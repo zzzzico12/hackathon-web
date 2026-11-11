@@ -7,11 +7,12 @@ import { useAuth } from "@/lib/useAuth";
 import { useUserData } from "@/lib/useUserData";
 import { HackathonCard } from "@/components/HackathonCard";
 import type { Hackathon } from "@/lib/types";
+import { apiFetch } from "@/lib/api";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/v1";
 
 async function fetchHackathonById(sourceId: string): Promise<Hackathon | null> {
-  const res = await fetch(`${API}/hackathons/${encodeURIComponent(sourceId)}`).catch(() => null);
+  const res = await apiFetch(`${API}/hackathons/${encodeURIComponent(sourceId)}`).catch(() => null);
   if (!res || !res.ok) return null;
   return res.json();
 }

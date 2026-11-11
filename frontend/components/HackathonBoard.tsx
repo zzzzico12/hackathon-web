@@ -7,6 +7,7 @@ import { fetchAuthSession } from "aws-amplify/auth";
 import { useAuth } from "@/lib/useAuth";
 import { BoardPostModal, type BoardItem } from "@/components/BoardPostModal";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { apiFetch } from "@/lib/api";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/v1";
 
@@ -97,7 +98,7 @@ function ThreadCard({
     try {
       const token = await getToken();
       const type = tab === "team" ? "TEAM" : "REPORT";
-      const res = await fetch(
+      const res = await apiFetch(
         `${API}/hackathons/${encodeURIComponent(sourceId)}/board`,
         {
           method: "POST",
@@ -316,7 +317,7 @@ export function HackathonBoard({
     async (t: TabType) => {
       setLoading(true);
       const token = await getToken();
-      const res = await fetch(
+      const res = await apiFetch(
         `${API}/hackathons/${encodeURIComponent(sourceId)}/board?tab=${t}`,
         { headers: token ? { Authorization: `Bearer ${token}` } : {} }
       ).catch(() => null);
@@ -353,7 +354,7 @@ export function HackathonBoard({
     const sk = deletingsk;
     setDeletingsk(null);
     const token = await getToken();
-    const res = await fetch(
+    const res = await apiFetch(
       `${API}/hackathons/${encodeURIComponent(sourceId)}/board/${encodeURIComponent(sk)}`,
       {
         method: "DELETE",

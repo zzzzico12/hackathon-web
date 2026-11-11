@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Star } from "lucide-react";
 import { fetchAuthSession } from "aws-amplify/auth";
+import { apiFetch } from "@/lib/api";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/v1";
 
@@ -115,7 +116,7 @@ export function BoardPostModal({
         if (type === "REPORT" && rating > 0) patch.rating = rating;
         if (type === "TEAM") { patch.skills = skills; patch.wants = wants; }
 
-        const res = await fetch(
+        const res = await apiFetch(
           `${API}/hackathons/${encodeURIComponent(sourceId)}/board/${encodeURIComponent(editItem.SK)}`,
           {
             method: "PATCH",
@@ -141,7 +142,7 @@ export function BoardPostModal({
       if (type === "REPORT" && rating > 0) payload.rating = rating;
       if (type === "TEAM") { payload.skills = skills; payload.wants = wants; }
 
-      const res = await fetch(
+      const res = await apiFetch(
         `${API}/hackathons/${encodeURIComponent(sourceId)}/board`,
         {
           method: "POST",

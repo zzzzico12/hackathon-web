@@ -1,13 +1,20 @@
 # Hackathon Japan
 
-日本で開催されるハッカソン情報を自動収集・整理するコミュニティプラットフォーム。
+日本で開催されるハッカソン情報を自動収集・整理する**個人用ツール**。
 
-**URL**: https://hackathon.zzzzico.click
+## 利用方針
+
+取得元サイトの利用規約を確認した結果、以下の方針で運用する。
+
+- **一般公開しない**：Web サイト（Amplify）は公開を停止し、画面は `localhost` でのみ起動する。API Gateway は全ルートで API キー必須。検索エンジンにもインデックスさせない（robots で全拒否・noindex）
+- **Devpost からの取得は停止**：Devpost の利用規約で自動取得（スクレイピング）が禁止されているため、コレクターを削除した
+- connpass API は個人利用の範囲で使用する（集約・公開型サービスとしての利用には事前承諾が必要）
+- Doorkeeper API は競合サービスとしての利用が禁止されているため、公開サービスとしては使わない
 
 ## 機能
 
 ### ハッカソン発見
-- connpass / Doorkeeper / Devpost / Web から毎日自動収集
+- connpass / Doorkeeper / Web から毎日自動収集
 - 賞金・テーマ・オンライン/オフライン・初心者向けでフィルタリング
 - キーワード検索・並び順変更（開始日順 / 賞金順）
 - 開催予定 / 開催済み切り替え
@@ -38,7 +45,7 @@
         ├── ConnpassCollector (06:00)   ──────────┐
         ├── DoorkeeperCollector (06:05) ──────────┤→ [SQS: DeduplicatorQueue]
         ├── GoogleAlertsCollector (06:10) ────────┘         │
-        ├── DevpostCollector (水曜 06:00) ─────────────────→ [Lambda: Deduplicator]
+        │                                          [Lambda: Deduplicator]
         └── TavilyCollector (毎日 07:00) ──────────────────→ [SQS: ScraperQueue]
                                                                       │
                                                            [Lambda: Scraper]
@@ -53,7 +60,7 @@
                                                   [Lambda: StatusUpdater] (06:30)
                                                   UPCOMING / PAST 自動更新
 
-[API Gateway + Cognito Authorizer]
+[API Gateway + API キー必須 + Cognito Authorizer]
     ├── GET  /hackathons, /hackathons/{id}     → ApiFunction       (認証不要)
     ├── GET,POST,PATCH,DELETE /hackathons/{id}/board → BoardFunction (認証必須)
     ├── GET,POST,DELETE /user/*                → UserDataFunction  (認証必須)
@@ -61,7 +68,7 @@
 
 [Amazon Cognito] Google Sign-In
 [Amazon S3]      アバター画像（avatars/{user_id}/avatar.jpg）
-[AWS Amplify]    Next.js ホスティング
+[Next.js]        localhost:3000 で起動（公開ホスティングなし）
 ```
 
 ## 技術スタック
@@ -69,9 +76,9 @@
 | レイヤー | 技術 |
 |----------|------|
 | フロントエンド | Next.js 16 (App Router), TypeScript, Tailwind CSS |
-| ホスティング | AWS Amplify |
+| ホスティング | なし（ローカル起動のみ） |
 | 認証 | Amazon Cognito (Google Sign-In) + Amplify v6 |
-| API | API Gateway + AWS Lambda (Python 3.11) |
+| API | API Gateway + AWS Lambda (Python 3.13) |
 | データベース | Amazon DynamoDB |
 | ストレージ | Amazon S3 (アバター画像) |
 | AI補完 | AWS Bedrock (Claude Sonnet) |
@@ -112,12 +119,11 @@
 │   └── collectors/
 │       ├── connpass/
 │       ├── doorkeeper/
-│       ├── devpost/
 │       ├── google_alerts/
 │       └── tavily/
 ├── template.yaml                 # AWS SAM テンプレート
 ├── samconfig.toml                # SAM デプロイ設定（.gitignore対象）
-└── amplify.yml                   # Amplify ビルド設定
+└── amplify.yml                   # （旧）Amplify ビルド設定。現在は未使用
 ```
 
 ## DynamoDB スキーマ
@@ -130,7 +136,7 @@
 | start_date | S (SK) | `2026-06-01` |
 | title | S | イベント名 |
 | source_url | S | 元URL |
-| source_name | S | connpass / doorkeeper / devpost / web |
+| source_name | S | connpass / doorkeeper / web（過去データに devpost が残る場合あり） |
 | is_online | BOOL | オンライン開催か |
 | online_status | S | ONLINE / OFFLINE / HYBRID |
 | prize_amount | N | 賞金総額（円） |
@@ -177,11 +183,12 @@ GSI: `status-start_date-index` / `online_status-start_date-index` / `prize_bucke
 |------|------|
 | 認証 | Cognito JWT (Google Sign-In)。書き込み系 API は全て Authorizer 必須 |
 | IAM | 役割別に最小権限（Collector / Processor / Api / Board / DM / UserData） |
-| CORS | Lambda: `https://hackathon.zzzzico.click` のみ。S3: 同ドメイン + localhost:3000 |
+| CORS | Lambda・S3 ともに `http://localhost:3000` のみ |
+| API 公開範囲 | 全ルートで API キー必須（UsagePlan `hackathon-personal`） |
 | S3 公開範囲 | `avatars/*` パスのみ GetObject 許可。ルートは非公開 |
 | スロットリング | API Gateway: 20 req/s・バースト 50 |
 | 入力バリデーション | メッセージ本文 5000字・メモ 2000字・表示名 100字の上限をバックエンドで強制 |
-| API キー | SSM Parameter Store (SecureString) 管理。コードに埋め込まない |
+| 外部サービスの API キー | SSM Parameter Store (SecureString) 管理。コードに埋め込まない |
 | 所有権確認 | 削除・編集は SK 末尾の user_id 一致を確認 |
 
 ## セットアップ
@@ -191,7 +198,7 @@ GSI: `status-start_date-index` / `online_status-start_date-index` / `prize_bucke
 - AWS CLI（プロファイル設定済み）
 - AWS SAM CLI
 - Node.js 20+
-- Python 3.11+
+- Python 3.13+
 
 ### SSM パラメータの登録
 
@@ -233,6 +240,7 @@ npm run dev
 
 ```
 NEXT_PUBLIC_API_URL=https://<api-id>.execute-api.ap-northeast-1.amazonaws.com/v1
+NEXT_PUBLIC_API_KEY=<sam deploy の Outputs: ApiKeyId から取得した値>
 NEXT_PUBLIC_COGNITO_USER_POOL_ID=ap-northeast-1_XXXXXXXXX
 NEXT_PUBLIC_COGNITO_CLIENT_ID=XXXXXXXXXXXXXXXXXXXXXXXXXX
 NEXT_PUBLIC_COGNITO_DOMAIN=your-domain.auth.ap-northeast-1.amazoncognito.com
@@ -247,7 +255,6 @@ NEXT_PUBLIC_AVATAR_BASE_URL=https://hackathon-avatars-<account-id>.s3.ap-northea
 | Doorkeeper | 毎日 06:05 | doorkeeper.jp API |
 | Google Alerts | 毎日 06:10 | Google Alerts RSS |
 | StatusUpdater | 毎日 06:30 | UPCOMING/PAST 自動更新 |
-| Devpost | 毎週水曜 06:00 | devpost.com |
 | Tavily Web検索 | 毎日 07:00 | 上記以外の Web サイト |
 
 ## データ収集を手動実行

@@ -5,6 +5,7 @@ import { fetchAuthSession } from "aws-amplify/auth";
 import { useAuth } from "@/lib/useAuth";
 import { HackathonCard } from "@/components/HackathonCard";
 import type { Hackathon } from "@/lib/types";
+import { apiFetch } from "@/lib/api";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/v1";
 
@@ -29,7 +30,7 @@ export function RecommendedSection() {
     (async () => {
       try {
         const token = await getToken();
-        const res = await fetch(`${API}/user/recommendations`, {
+        const res = await apiFetch(`${API}/user/recommendations`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         if (!res.ok) return;

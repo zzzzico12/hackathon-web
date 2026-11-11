@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/useAuth";
 import { User, Settings, MessageSquare, Home, LogOut } from "lucide-react";
 import { fetchAuthSession } from "aws-amplify/auth";
+import { apiFetch } from "@/lib/api";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/v1";
 
@@ -46,7 +47,7 @@ export function AuthButton() {
     const fetchUnread = async () => {
       const token = await getToken();
       if (!token) return;
-      const res = await fetch(`${API}/dm/inbox`, {
+      const res = await apiFetch(`${API}/dm/inbox`, {
         headers: { Authorization: `Bearer ${token}` },
       }).catch(() => null);
       if (res?.ok) {

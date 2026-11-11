@@ -9,6 +9,7 @@ export const metadata: Metadata = {
   title: "Hackathon Japan - 日本のハッカソンまとめ",
   description:
     "日本で開催されるハッカソンを一覧で探せるサイト。オンライン・オフライン、賞金額、テーマ、初心者向けなどで絞り込めます。",
+  robots: { index: false, follow: false },
   openGraph: {
     title: "Hackathon Japan",
     description: "日本のハッカソンをまとめて探せる",

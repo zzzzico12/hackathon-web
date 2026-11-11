@@ -5,6 +5,7 @@ import { ArrowLeft, Send } from "lucide-react";
 import Link from "next/link";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { useAuth } from "@/lib/useAuth";
+import { apiFetch } from "@/lib/api";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/v1";
 
@@ -81,7 +82,7 @@ export function DmApp({
   const fetchInbox = useCallback(async () => {
     const token = await getToken();
     if (!token) return;
-    const res = await fetch(`${API}/dm/inbox`, {
+    const res = await apiFetch(`${API}/dm/inbox`, {
       headers: { Authorization: `Bearer ${token}` },
     }).catch(() => null);
     if (res?.ok) {
@@ -93,7 +94,7 @@ export function DmApp({
   const fetchMessages = useCallback(async (otherUserId: string) => {
     const token = await getToken();
     if (!token) return;
-    const res = await fetch(`${API}/dm/messages?with=${encodeURIComponent(otherUserId)}`, {
+    const res = await apiFetch(`${API}/dm/messages?with=${encodeURIComponent(otherUserId)}`, {
       headers: { Authorization: `Bearer ${token}` },
     }).catch(() => null);
     if (res?.ok) {
@@ -165,7 +166,7 @@ export function DmApp({
     if (textareaRef.current) textareaRef.current.style.height = "auto";
     try {
       const token = await getToken();
-      const res = await fetch(`${API}/dm/send`, {
+      const res = await apiFetch(`${API}/dm/send`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

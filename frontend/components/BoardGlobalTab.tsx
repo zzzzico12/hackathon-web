@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Star, Users, ChevronRight, LogIn } from "lucide-react";
 import type { TabKey } from "@/components/TabBar";
 import { useAuth } from "@/lib/useAuth";
+import { apiFetch } from "@/lib/api";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/v1";
 
@@ -139,7 +140,7 @@ export function BoardGlobalTab({ tab, q }: { tab: TabKey; q?: string }) {
     async (lastKeyParam?: string) => {
       const params = new URLSearchParams({ tab, ...(q ? { q } : {}) });
       if (lastKeyParam) params.set("last_key", lastKeyParam);
-      const res = await fetch(`${API}/board?${params}`).catch(() => null);
+      const res = await apiFetch(`${API}/board?${params}`).catch(() => null);
       if (!res || !res.ok) return { items: [], last_key: null };
       return res.json() as Promise<{ items: BoardItem[]; last_key: string | null }>;
     },

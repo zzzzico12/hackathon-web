@@ -5,6 +5,7 @@ import Link from "next/link";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { useAuth } from "@/lib/useAuth";
 import { User, Camera, Check, Loader2 } from "lucide-react";
+import { apiFetch } from "@/lib/api";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/v1";
 
@@ -69,7 +70,7 @@ export default function ProfilePage() {
     setAvatarError(null);
     try {
       const token = await getToken();
-      const presignRes = await fetch(`${API}/user/avatar/presign`, {
+      const presignRes = await apiFetch(`${API}/user/avatar/presign`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
