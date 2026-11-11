@@ -1,15 +1,27 @@
 # Hackathon Japan
 
-日本で開催されるハッカソン情報を自動収集・整理する**個人用ツール**。
+日本で開催されるハッカソン情報を自動収集・整理する**個人用ツール**。自分だけが使う前提で、画面は自分の Mac 上（http://localhost:3100）でのみ動かしている。
+
+> 当初は Web サイト（`https://hackathon.zzzzico.click`）として一般公開していたが、取得元サイトの利用規約を確認した結果、2026年11月に公開を停止し、個人用ツールに切り替えた。
 
 ## 利用方針
 
-取得元サイトの利用規約を確認した結果、以下の方針で運用する。
+### 取得元ごとの規約と扱い
 
-- **一般公開しない**：Web サイト（Amplify）は公開を停止し、画面は `localhost` でのみ起動する。API Gateway は全ルートで API キー必須。検索エンジンにもインデックスさせない（robots で全拒否・noindex）
-- **Devpost からの取得は停止**：Devpost の利用規約で自動取得（スクレイピング）が禁止されているため、コレクターを削除した
-- connpass API は個人利用の範囲で使用する（集約・公開型サービスとしての利用には事前承諾が必要）
-- Doorkeeper API は競合サービスとしての利用が禁止されているため、公開サービスとしては使わない
+| 取得元 | 取得方法 | 規約上のポイント | 扱い |
+|--------|----------|------------------|------|
+| connpass | 公式 API（API キーを申請して取得） | API は個人利用として申請。集約・公開型サービスとして使う場合は事前承諾が必要 | 個人利用の範囲で継続 |
+| Doorkeeper | 公式 API | 競合サービスへの利用は禁止。利用規約・プライバシーポリシーの設置が必要 | 個人利用の範囲で継続 |
+| Devpost | 非公式 JSON エンドポイント | 利用規約で自動取得（スクレイピング）が禁止 | **取得を停止**。コレクターと保存済みデータを削除 |
+| TECH PLAY・CraftStadium・AI Festival・Web 検索で見つけたページ | ページを自動取得し、Bedrock で項目を抽出 | — | 個人利用の範囲で継続 |
+
+### 非公開化のために行ったこと
+
+- Amplify アプリを削除し、`hackathon.zzzzico.click` の DNS レコードも削除した（公開 URL は存在しない）
+- 画面は launchd で自分の Mac に常駐させ、`localhost:3100` からのみ使う
+- API Gateway は全ルートで API キー必須。キーは `frontend/.env.local` にのみ置く（git 管理外）
+- CORS・Cognito のコールバック URL は `http://localhost:3100` のみ許可
+- 検索エンジンにインデックスさせない（robots.txt で全拒否、`noindex`、sitemap 削除）
 
 ## 機能
 
@@ -28,6 +40,9 @@
 - カレンダー書き出し（.ics）
 
 ### コミュニティ（要ログイン）
+
+公開時に作った機能。個人用ツールになったため、現在は自分以外の利用者はいない。
+
 - チーム募集掲示板（スキル提供/求む表示）
 - 参加レポート（★評価付き）
 - スレッド返信・編集・削除
@@ -46,7 +61,10 @@
         ├── DoorkeeperCollector (06:05) ──────────┤→ [SQS: DeduplicatorQueue]
         ├── GoogleAlertsCollector (06:10) ────────┘         │
         │                                          [Lambda: Deduplicator]
-        └── TavilyCollector (毎日 07:00) ──────────────────→ [SQS: ScraperQueue]
+        ├── TavilyCollector (07:00) ───────────┐
+        ├── CraftStadiumCollector (07:15) ─────┤
+        ├── AiFestivalCollector (07:20) ───────┤
+        └── TechPlayCollector (07:25) ─────────┴──────────→ [SQS: ScraperQueue]
                                                                       │
                                                            [Lambda: Scraper]
                                                                       │
@@ -61,14 +79,14 @@
                                                   UPCOMING / PAST 自動更新
 
 [API Gateway + API キー必須 + Cognito Authorizer]
-    ├── GET  /hackathons, /hackathons/{id}     → ApiFunction       (認証不要)
+    ├── GET  /hackathons, /hackathons/{id}     → ApiFunction       (API キーのみ)
     ├── GET,POST,PATCH,DELETE /hackathons/{id}/board → BoardFunction (認証必須)
     ├── GET,POST,DELETE /user/*                → UserDataFunction  (認証必須)
     └── GET,POST /dm/*                         → DmFunction        (認証必須)
 
 [Amazon Cognito] Google Sign-In
 [Amazon S3]      アバター画像（avatars/{user_id}/avatar.jpg）
-[Next.js]        localhost:3100 で起動（公開ホスティングなし）
+[Next.js]        自分の Mac で launchd 常駐、localhost:3100（公開ホスティングなし）
 ```
 
 ## 技術スタック
@@ -76,7 +94,7 @@
 | レイヤー | 技術 |
 |----------|------|
 | フロントエンド | Next.js 16 (App Router), TypeScript, Tailwind CSS |
-| ホスティング | なし（ローカル起動のみ） |
+| ホスティング | なし（自分の Mac で launchd 常駐） |
 | 認証 | Amazon Cognito (Google Sign-In) + Amplify v6 |
 | API | API Gateway + AWS Lambda (Python 3.13) |
 | データベース | Amazon DynamoDB |
@@ -120,10 +138,13 @@
 │       ├── connpass/
 │       ├── doorkeeper/
 │       ├── google_alerts/
-│       └── tavily/
+│       ├── tavily/
+│       ├── techplay/
+│       ├── craftstadium/
+│       └── aifestival/
 ├── template.yaml                 # AWS SAM テンプレート
 ├── samconfig.toml                # SAM デプロイ設定（.gitignore対象）
-└── amplify.yml                   # （旧）Amplify ビルド設定。現在は未使用
+└── amplify.yml                   # 公開時の Amplify ビルド設定（現在は未使用）
 ```
 
 ## DynamoDB スキーマ
@@ -136,7 +157,7 @@
 | start_date | S (SK) | `2026-06-01` |
 | title | S | イベント名 |
 | source_url | S | 元URL |
-| source_name | S | connpass / doorkeeper / web（過去データに devpost が残る場合あり） |
+| source_name | S | connpass / doorkeeper / web |
 | is_online | BOOL | オンライン開催か |
 | online_status | S | ONLINE / OFFLINE / HYBRID |
 | prize_amount | N | 賞金総額（円） |
@@ -181,6 +202,7 @@ GSI: `status-start_date-index` / `online_status-start_date-index` / `prize_bucke
 
 | 項目 | 内容 |
 |------|------|
+| 公開範囲 | 公開 URL なし。画面は localhost:3100 のみ、API は全ルートで API キー必須 |
 | 認証 | Cognito JWT (Google Sign-In)。書き込み系 API は全て Authorizer 必須 |
 | IAM | 役割別に最小権限（Collector / Processor / Api / Board / DM / UserData） |
 | CORS | Lambda・S3 ともに `http://localhost:3100` のみ |
@@ -198,7 +220,7 @@ GSI: `status-start_date-index` / `online_status-start_date-index` / `prize_bucke
 - AWS CLI（プロファイル設定済み）
 - AWS SAM CLI
 - Node.js 20+
-- Python 3.13+
+- Python 3.13+（Lambda ランタイムも python3.13。python3.11 は AWS 側で更新不可になったため移行済み）
 
 ### SSM パラメータの登録
 
@@ -242,22 +264,34 @@ launchctl bootout gui/$(id -u)/com.otsuka.hackathon-web
 
 ### フロントエンド（ローカル開発）
 
+launchd の常駐と同じ 3100 番を使うため、先に常駐を止めてから起動する。
+
 ```bash
+launchctl bootout gui/$(id -u)/com.otsuka.hackathon-web
 cd frontend
-cp .env.local.example .env.local
 npm install
-npm run dev
+npm run dev   # http://localhost:3100
+
+# 開発が終わったら常駐を再開
+npm run build
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.otsuka.hackathon-web.plist
 ```
 
 ### 環境変数（.env.local）
 
 ```
 NEXT_PUBLIC_API_URL=https://<api-id>.execute-api.ap-northeast-1.amazonaws.com/v1
-NEXT_PUBLIC_API_KEY=<sam deploy の Outputs: ApiKeyId から取得した値>
+NEXT_PUBLIC_API_KEY=<API キーの値>
 NEXT_PUBLIC_COGNITO_USER_POOL_ID=ap-northeast-1_XXXXXXXXX
 NEXT_PUBLIC_COGNITO_CLIENT_ID=XXXXXXXXXXXXXXXXXXXXXXXXXX
 NEXT_PUBLIC_COGNITO_DOMAIN=your-domain.auth.ap-northeast-1.amazoncognito.com
 NEXT_PUBLIC_AVATAR_BASE_URL=https://hackathon-avatars-<account-id>.s3.ap-northeast-1.amazonaws.com
+```
+
+API キーの値は、`sam deploy` の Outputs にある `ApiKeyId` から取得する。
+
+```bash
+aws apigateway get-api-key --api-key <ApiKeyId> --include-value --query value --output text
 ```
 
 ## データ収集スケジュール
@@ -269,6 +303,11 @@ NEXT_PUBLIC_AVATAR_BASE_URL=https://hackathon-avatars-<account-id>.s3.ap-northea
 | Google Alerts | 毎日 06:10 | Google Alerts RSS |
 | StatusUpdater | 毎日 06:30 | UPCOMING/PAST 自動更新 |
 | Tavily Web検索 | 毎日 07:00 | 上記以外の Web サイト |
+| CraftStadium | 毎日 07:15 | craftstadium.com |
+| AI Festival | 毎日 07:20 | aifestival.jp |
+| TECH PLAY | 毎日 07:25 | techplay.jp |
+
+収集は AWS 上で動くため、Mac の電源や画面の常駐とは関係なく毎日続く。Devpost は 2026年11月に取得を停止した。
 
 ## データ収集を手動実行
 
