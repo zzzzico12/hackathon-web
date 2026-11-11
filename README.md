@@ -24,7 +24,7 @@
 | 取得元 | 参照先 |
 |--------|--------|
 | connpass | [connpass API 利用規約](https://help.connpass.com/api/api-term) / [connpass 利用規約](https://connpass.com/term/)（第7条第1項第17号：API 以外でのクローリング・スクレイピングを禁止） |
-| Doorkeeper | [Doorkeeper API（API Terms of Use）](https://www.doorkeeper.jp/developer/api) |
+| Doorkeeper | [Doorkeeper API（API Terms of Use）](https://www.doorkeeper.jp/developer/api) / [Doorkeeper 利用規約](https://www.doorkeeper.jp/terms)（ウェブサイトと API の両方に適用。自動取得・保存に関する条項なし） |
 | Devpost | [Devpost Terms of Service](https://info.devpost.com/terms) / [robots.txt](https://devpost.com/robots.txt) |
 | TECH PLAY | [TECH PLAY 利用規約](https://techplay.jp/terms_of_use) / [robots.txt](https://techplay.jp/robots.txt) |
 | CraftStadium | [CraftStadium 利用規約](https://www.craftstadium.com/help/terms) / [robots.txt](https://www.craftstadium.com/robots.txt) |
