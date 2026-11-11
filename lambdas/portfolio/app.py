@@ -21,7 +21,7 @@ hackathon_table = dynamodb.Table(HACKATHONS_TABLE)
 board_table = dynamodb.Table(BOARD_TABLE)
 
 CORS = {
-    "Access-Control-Allow-Origin": "http://localhost:3000",
+    "Access-Control-Allow-Origin": "http://localhost:3100",
     "Access-Control-Allow-Headers": "Content-Type,X-Api-Key",
     "Access-Control-Allow-Methods": "GET,OPTIONS",
 }

@@ -68,7 +68,7 @@
 
 [Amazon Cognito] Google Sign-In
 [Amazon S3]      アバター画像（avatars/{user_id}/avatar.jpg）
-[Next.js]        localhost:3000 で起動（公開ホスティングなし）
+[Next.js]        localhost:3100 で起動（公開ホスティングなし）
 ```
 
 ## 技術スタック
@@ -183,7 +183,7 @@ GSI: `status-start_date-index` / `online_status-start_date-index` / `prize_bucke
 |------|------|
 | 認証 | Cognito JWT (Google Sign-In)。書き込み系 API は全て Authorizer 必須 |
 | IAM | 役割別に最小権限（Collector / Processor / Api / Board / DM / UserData） |
-| CORS | Lambda・S3 ともに `http://localhost:3000` のみ |
+| CORS | Lambda・S3 ともに `http://localhost:3100` のみ |
 | API 公開範囲 | 全ルートで API キー必須（UsagePlan `hackathon-personal`） |
 | S3 公開範囲 | `avatars/*` パスのみ GetObject 許可。ルートは非公開 |
 | スロットリング | API Gateway: 20 req/s・バースト 50 |

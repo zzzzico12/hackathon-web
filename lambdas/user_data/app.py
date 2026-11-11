@@ -26,7 +26,7 @@ s3 = boto3.client(
 
 VALID_TYPES = {"FAV", "DONE", "APPLIED", "NOTE"}
 CORS = {
-    "Access-Control-Allow-Origin": "http://localhost:3000",
+    "Access-Control-Allow-Origin": "http://localhost:3100",
     "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Api-Key",
     "Access-Control-Allow-Methods": "GET,POST,DELETE,OPTIONS",
 }

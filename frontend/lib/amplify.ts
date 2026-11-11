@@ -16,12 +16,10 @@ Amplify.configure({
           domain,
           scopes: ["openid", "profile", "aws.cognito.signin.user.admin"],
           redirectSignIn: [
-            "https://hackathon.zzzzico.click/auth/callback",
-            "http://localhost:3000/auth/callback",
+            "http://localhost:3100/auth/callback",
           ],
           redirectSignOut: [
-            "https://hackathon.zzzzico.click",
-            "http://localhost:3000",
+            "http://localhost:3100",
           ],
           responseType: "code",
         },

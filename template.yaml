@@ -158,7 +158,7 @@ Resources:
           - AllowedHeaders: ["*"]
             AllowedMethods: [GET, PUT]
             AllowedOrigins:
-              - "http://localhost:3000"
+              - "http://localhost:3100"
             ExposedHeaders: [ETag]
             MaxAge: 3600
 
@@ -233,9 +233,9 @@ Resources:
       SupportedIdentityProviders:
         - Google
       CallbackURLs:
-        - http://localhost:3000/auth/callback
+        - http://localhost:3100/auth/callback
       LogoutURLs:
-        - http://localhost:3000
+        - http://localhost:3100
       ExplicitAuthFlows:
         - ALLOW_REFRESH_TOKEN_AUTH
 
@@ -731,7 +731,7 @@ Resources:
       Cors:
         AllowMethods: "'GET,POST,DELETE,PATCH,OPTIONS'"
         AllowHeaders: "'Content-Type,Authorization,X-Api-Key'"
-        AllowOrigin: "'http://localhost:3000'"
+        AllowOrigin: "'http://localhost:3100'"
       # 個人利用のみ: 全ルートで API キー必須（キーは Outputs の ApiKeyId から取得）
       Auth:
         ApiKeyRequired: true
