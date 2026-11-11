@@ -1,4 +1,4 @@
-.PHONY: build deploy local-connpass local-doorkeeper setup-ssm
+.PHONY: build deploy local-doorkeeper setup-ssm
 
 PROFILE = --profile otsuka
 PYENV   = PYENV_VERSION=3.13.3
@@ -10,11 +10,6 @@ deploy: build
 	$(PYENV) sam deploy
 
 # ローカルテスト（SQS未使用、DynamoDBに直接書き込み）
-local-connpass:
-	$(PYENV) sam local invoke ConnpassCollector \
-	  --env-vars local-env.json \
-	  --event events/empty.json
-
 local-doorkeeper:
 	$(PYENV) sam local invoke DoorkeeperCollector \
 	  --env-vars local-env.json \
@@ -36,12 +31,6 @@ setup-ssm:
 	  --overwrite
 
 # Lambda手動実行（デプロイ後の動作確認）
-invoke-connpass:
-	aws lambda invoke $(PROFILE) \
-	  --function-name hackathon-connpass-collector \
-	  --payload '{}' \
-	  /tmp/connpass-out.json && cat /tmp/connpass-out.json
-
 invoke-doorkeeper:
 	aws lambda invoke $(PROFILE) \
 	  --function-name hackathon-doorkeeper-collector \
@@ -56,9 +45,6 @@ scan-db:
 	  --query 'Items[].{id:source_id.S,title:title.S,date:start_date.S}'
 
 # ログ確認
-logs-connpass:
-	aws logs tail $(PROFILE) /aws/lambda/hackathon-connpass-collector --follow
-
 logs-doorkeeper:
 	aws logs tail $(PROFILE) /aws/lambda/hackathon-doorkeeper-collector --follow
 

@@ -10,7 +10,7 @@
 
 | 取得元 | 取得方法 | 規約上のポイント | 扱い |
 |--------|----------|------------------|------|
-| connpass | 公式 API（API キーを申請して取得） | API は個人利用として申請。集約・公開型サービスとして使う場合は事前承諾が必要 | 個人利用の範囲で継続 |
+| connpass | 公式 API（API キーを申請して取得） | 集約・公開型の利用には事前承諾が必要。申請時の利用目的（自身のイベント管理）と DB 保存なしの申告が、実際の使い方と一致しなかった | **取得を停止**。コレクターと保存済みデータを削除 |
 | Doorkeeper | 公式 API | 競合サービスへの利用は禁止。利用規約・プライバシーポリシーの設置が必要 | 個人利用の範囲で継続 |
 | Devpost | 非公式 JSON エンドポイント | 利用規約で自動取得（スクレイピング）が禁止 | **取得を停止**。コレクターと保存済みデータを削除 |
 | TECH PLAY | ページを自動取得し、Bedrock で項目を抽出 | 自動取得の禁止条項なし。robots.txt で `Crawl-delay: 5` | 5 秒間隔を守って継続 |
@@ -23,7 +23,7 @@
 
 - User-Agent は `HackathonJPBot/1.0 (personal use)` と名乗る（ブラウザを装わない）
 - スクレイパーは取得前に robots.txt を確認し、禁止されている URL は取得しない。`Crawl-delay` があればその秒数待ってから取得する
-- 自動取得を禁止している、または取得を停止した取得元（`devpost.com`・`craftstadium.com`）はブロックリストで除外する
+- 自動取得を禁止している、または取得を停止した取得元（`devpost.com`・`craftstadium.com`・`connpass.com`）はブロックリストで除外する
 
 ### 非公開化のために行ったこと
 
@@ -36,7 +36,7 @@
 ## 機能
 
 ### ハッカソン発見
-- connpass / Doorkeeper / Web から毎日自動収集
+- Doorkeeper / TECH PLAY / AI Festival / Web 検索から毎日自動収集
 - 賞金・テーマ・オンライン/オフライン・初心者向けでフィルタリング
 - キーワード検索・並び順変更（開始日順 / 賞金順）
 - 開催予定 / 開催済み切り替え
@@ -65,10 +65,9 @@
 ## アーキテクチャ
 
 ```
-[EventBridge Scheduler] 毎日 JST 06:00〜07:00
+[EventBridge Scheduler] 毎日 JST 06:05〜07:25
         │
-        ├── ConnpassCollector (06:00)   ──────────┐
-        ├── DoorkeeperCollector (06:05) ──────────┤→ [SQS: DeduplicatorQueue]
+        ├── DoorkeeperCollector (06:05) ──────────┐→ [SQS: DeduplicatorQueue]
         ├── GoogleAlertsCollector (06:10) ────────┘         │
         │                                          [Lambda: Deduplicator]
         ├── TavilyCollector (07:00) ───────────┐
@@ -144,7 +143,6 @@
 │   ├── deduplicator/             # 重複排除・DynamoDB書き込み
 │   ├── scraper/                  # HTML取得
 │   └── collectors/
-│       ├── connpass/
 │       ├── doorkeeper/
 │       ├── google_alerts/
 │       ├── tavily/
@@ -161,11 +159,11 @@
 
 | 属性 | 型 | 説明 |
 |------|----|------|
-| source_id | S (PK) | `connpass#12345` / `web#<hash>` |
+| source_id | S (PK) | `doorkeeper#12345` / `web#<hash>` |
 | start_date | S (SK) | `2026-06-01` |
 | title | S | イベント名 |
 | source_url | S | 元URL |
-| source_name | S | connpass / doorkeeper / web |
+| source_name | S | doorkeeper / web |
 | is_online | BOOL | オンライン開催か |
 | online_status | S | ONLINE / OFFLINE / HYBRID |
 | prize_amount | N | 賞金総額（円） |
@@ -233,9 +231,6 @@ GSI: `status-start_date-index` / `online_status-start_date-index` / `prize_bucke
 ### SSM パラメータの登録
 
 ```bash
-aws ssm put-parameter --name /hackathon/connpass_api_key \
-  --value "<YOUR_KEY>" --type SecureString
-
 aws ssm put-parameter --name /hackathon/tavily_api_key \
   --value "<YOUR_KEY>" --type SecureString
 
@@ -306,7 +301,6 @@ aws apigateway get-api-key --api-key <ApiKeyId> --include-value --query value --
 
 | コレクター | 実行時刻（JST） | 対象 |
 |-----------|----------------|------|
-| Connpass | 毎日 06:00 | connpass.com API |
 | Doorkeeper | 毎日 06:05 | doorkeeper.jp API |
 | Google Alerts | 毎日 06:10 | Google Alerts RSS |
 | StatusUpdater | 毎日 06:30 | UPCOMING/PAST 自動更新 |
@@ -314,13 +308,13 @@ aws apigateway get-api-key --api-key <ApiKeyId> --include-value --query value --
 | AI Festival | 毎日 07:20 | aifestival.jp |
 | TECH PLAY | 毎日 07:25 | techplay.jp |
 
-収集は AWS 上で動くため、Mac の電源や画面の常駐とは関係なく毎日続く。Devpost と CraftStadium は 2026年11月に取得を停止した。
+収集は AWS 上で動くため、Mac の電源や画面の常駐とは関係なく毎日続く。Devpost・CraftStadium・connpass は 2026年11月に取得を停止した。
 
 ## データ収集を手動実行
 
 ```bash
-# connpass
-aws lambda invoke --function-name hackathon-connpass-collector \
+# Doorkeeper
+aws lambda invoke --function-name hackathon-doorkeeper-collector \
   --region ap-northeast-1 /tmp/out.json
 
 # Tavily

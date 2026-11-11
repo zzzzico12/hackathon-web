@@ -553,23 +553,6 @@ Resources:
 # ─────────────────────────────────────────
 # Lambda 関数
 # ─────────────────────────────────────────
-  ConnpassCollector:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: hackathon-connpass-collector
-      CodeUri: lambdas/collectors/connpass/
-      Handler: app.handler
-      Role: !GetAtt CollectorRole.Arn
-      Environment:
-        Variables:
-          CONNPASS_API_KEY_SSM_NAME: /hackathon/connpass_api_key
-      Events:
-        DailySchedule:
-          Type: ScheduleV2
-          Properties:
-            ScheduleExpression: "cron(0 21 * * ? *)"   # JST 06:00
-            ScheduleExpressionTimezone: UTC
-
   DoorkeeperCollector:
     Type: AWS::Serverless::Function
     Properties:

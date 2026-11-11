@@ -24,7 +24,7 @@ BOT_NAME = "HackathonJPBot"
 HEADERS = {"User-Agent": f"{BOT_NAME}/1.0 (personal use)"}
 
 # 利用規約で自動取得が禁止されている、または取得を停止した取得元
-BLOCKED_DOMAINS = {"devpost.com", "craftstadium.com"}
+BLOCKED_DOMAINS = {"devpost.com", "craftstadium.com", "connpass.com"}
 
 _robots_cache: dict[str, robotparser.RobotFileParser | None] = {}
 

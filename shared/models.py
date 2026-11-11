@@ -5,10 +5,10 @@ from datetime import datetime
 
 @dataclass
 class Hackathon:
-    source_id: str          # PK: "connpass#12345"
+    source_id: str          # PK: "doorkeeper#12345" / "web#<hash>"
     title: str
     source_url: str
-    source_name: str        # connpass / doorkeeper / web
+    source_name: str        # doorkeeper / web
     start_date: str         # YYYY-MM-DD
     end_date: str           # YYYY-MM-DD
     entry_deadline: Optional[str] = None
