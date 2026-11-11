@@ -227,7 +227,20 @@ sam deploy --guided   # 初回のみ
 sam deploy            # 2回目以降
 ```
 
-### フロントエンド（ローカル）
+### フロントエンド（常駐: launchd）
+
+`~/Library/LaunchAgents/com.otsuka.hackathon-web.plist` で `next start -p 3100` を常駐させている（ログイン時に自動起動、ログは `/tmp/hackathon-web.log`）。
+
+```bash
+# コードや .env.local を変更したら、ビルドして再起動
+cd frontend && npm run build
+launchctl kickstart -k gui/$(id -u)/com.otsuka.hackathon-web
+
+# 常駐をやめる
+launchctl bootout gui/$(id -u)/com.otsuka.hackathon-web
+```
+
+### フロントエンド（ローカル開発）
 
 ```bash
 cd frontend
