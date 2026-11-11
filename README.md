@@ -10,14 +10,29 @@
 
 | 取得元 | 取得方法 | 規約上のポイント | 扱い |
 |--------|----------|------------------|------|
-| connpass | 公式 API（API キーを申請して取得） | 集約・公開型の利用には事前承諾が必要。申請時の利用目的（自身のイベント管理）と DB 保存なしの申告が、実際の使い方と一致しなかった | **取得を停止**。コレクターと保存済みデータを削除 |
-| Doorkeeper | 公式 API | 競合サービスへの利用は禁止。利用規約・プライバシーポリシーの設置が必要 | 個人利用の範囲で継続 |
-| Devpost | 非公式 JSON エンドポイント | 利用規約で自動取得（スクレイピング）が禁止 | **取得を停止**。コレクターと保存済みデータを削除 |
-| TECH PLAY | ページを自動取得し、Bedrock で項目を抽出 | 自動取得の禁止条項なし。robots.txt で `Crawl-delay: 5` | 5 秒間隔を守って継続 |
+| connpass | 公式 API（API キーを申請して取得） | API 利用規約 第5条の2第3項：集約・公開型の利用には事前承諾が必要。第2条第2項：登録内容は正確である必要がある。申請時の利用目的（自身のイベント管理）と DB 保存なしの申告が、実際の使い方と一致しなかった | **取得を停止**。コレクターと保存済みデータを削除 |
+| Doorkeeper | 公式 API | API Terms of Use：競合サービスへの利用は禁止。イベント表示時は Doorkeeper のページへリンク。利用規約・プライバシーポリシーの設置が必要 | 個人利用の範囲で継続 |
+| Devpost | 非公式 JSON エンドポイント | Terms of Service Section 4：自動取得（scrape・crawl）を禁止。Section 7(A)：コンテンツの無断複製を禁止 | **取得を停止**。コレクターと保存済みデータを削除 |
+| TECH PLAY | ページを自動取得し、Bedrock で項目を抽出 | 自動取得の禁止条項なし（第7条第3項で運営者コンテンツの無断転載は禁止）。robots.txt で `Crawl-delay: 5` | 5 秒間隔を守って継続 |
 | CraftStadium | ページを自動取得 | 利用規約 1.9 第13号で「ボット等の自動化プログラム」の利用を禁止 | **取得を停止**。コレクターと保存済みデータを削除 |
 | AI Festival | ページを自動取得 | 利用規約なし。robots.txt で全体を許可 | 継続 |
-| Google アラート | RSS フィード | Google 利用規約は robots.txt に反する自動アクセスを禁止。`/alerts/` は Disallow だが、RSS はフィードリーダー向けの提供形式 | 個人利用の範囲で継続 |
-| Tavily | 検索 API | 利用は内部目的に限る。第三者の規約順守は利用者の責任 | 継続。見つけたページは robots.txt を確認してから取得 |
+| Google アラート | RSS フィード | Google 利用規約「サービスの不正使用の禁止」：robots.txt に反する自動アクセスを禁止。`/alerts/` は Disallow だが、RSS はフィードリーダー向けの提供形式 | 個人利用の範囲で継続 |
+| Tavily | 検索 API | Terms Section 2：利用は内部目的に限る。Section 10.2：第三者の規約順守は利用者の責任 | 継続。見つけたページは robots.txt を確認してから取得 |
+
+### 参照した規約・robots.txt（2026年11月確認）
+
+| 取得元 | 参照先 |
+|--------|--------|
+| connpass | [connpass API 利用規約](https://help.connpass.com/api/api-term) / [connpass 利用規約](https://connpass.com/term/)（第7条第1項第17号：API 以外でのクローリング・スクレイピングを禁止） |
+| Doorkeeper | [Doorkeeper API（API Terms of Use）](https://www.doorkeeper.jp/developer/api) |
+| Devpost | [Devpost Terms of Service](https://info.devpost.com/terms) / [robots.txt](https://devpost.com/robots.txt) |
+| TECH PLAY | [TECH PLAY 利用規約](https://techplay.jp/terms_of_use) / [robots.txt](https://techplay.jp/robots.txt) |
+| CraftStadium | [CraftStadium 利用規約](https://www.craftstadium.com/help/terms) / [robots.txt](https://www.craftstadium.com/robots.txt) |
+| AI Festival | 利用規約ページなし / [robots.txt](https://www.aifestival.jp/robots.txt) |
+| Google アラート | [Google 利用規約](https://policies.google.com/terms?hl=ja) / [robots.txt](https://www.google.com/robots.txt) |
+| Tavily | [Tavily Terms of Service](https://www.tavily.com/terms) |
+
+規約は変更されることがあるため、取得元を追加・変更するときは改めて確認する。
 
 ### 自動取得のルール
 
