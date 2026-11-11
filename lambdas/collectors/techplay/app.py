@@ -10,6 +10,7 @@ import hashlib
 import json
 import os
 import re
+import time
 from datetime import datetime
 
 import boto3
@@ -22,6 +23,8 @@ sqs = boto3.client("sqs")
 TAG_URL = "https://techplay.jp/event/tag/hackathon"
 BASE_URL = "https://techplay.jp"
 MAX_PAGES = 10  # 無限ループ防止
+CRAWL_DELAY = 5  # techplay.jp/robots.txt の Crawl-delay
+HEADERS = {"User-Agent": "HackathonJPBot/1.0 (personal use)"}
 
 
 def extract_inertia_data(html: str) -> dict | None:
@@ -38,7 +41,7 @@ def extract_inertia_data(html: str) -> dict | None:
 
 def fetch_page(url: str) -> tuple[list[dict], str | None]:
     """指定ページのイベント一覧と次ページURLを返す。"""
-    resp = requests.get(url, timeout=30, headers={"User-Agent": "Mozilla/5.0"})
+    resp = requests.get(url, timeout=30, headers=HEADERS)
     resp.raise_for_status()
 
     data = extract_inertia_data(resp.text)
@@ -70,9 +73,11 @@ def handler(event, context):
     all_events: list[dict] = []
     next_url: str | None = TAG_URL
 
-    for _ in range(MAX_PAGES):
+    for i in range(MAX_PAGES):
         if not next_url:
             break
+        if i > 0:
+            time.sleep(CRAWL_DELAY)
         events, next_url = fetch_page(next_url)
         all_events.extend(events)
         print(f"[techplay] fetched {len(events)} events, next={next_url}")

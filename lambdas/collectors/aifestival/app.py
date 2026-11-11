@@ -16,6 +16,7 @@ SCRAPER_QUEUE_URL = os.environ["SCRAPER_QUEUE_URL"]
 sqs = boto3.client("sqs")
 
 BASE_URL = "https://www.aifestival.jp"
+HEADERS = {"User-Agent": "HackathonJPBot/1.0 (personal use)"}
 LIST_URL = f"{BASE_URL}/hackathon"
 
 # /hackathon/<slug> 形式のみ（/hackathon 自体はリストページなのでスキップ）
@@ -80,7 +81,7 @@ def handler(event, context):
     seed_urls = [f"{BASE_URL}/hackathon/entry-{year}-{i}" for i in range(1, _SEED_ROUNDS)]
 
     try:
-        resp = requests.get(LIST_URL, timeout=30, headers={"User-Agent": "Mozilla/5.0"})
+        resp = requests.get(LIST_URL, timeout=30, headers=HEADERS)
         resp.raise_for_status()
         dynamic_urls = extract_event_urls(resp.text)
     except Exception as e:

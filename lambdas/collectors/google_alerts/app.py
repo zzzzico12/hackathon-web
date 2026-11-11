@@ -25,7 +25,7 @@ ssm = boto3.client("ssm")
 dynamodb = boto3.resource("dynamodb")
 seen_table = dynamodb.Table(SEEN_TABLE)
 
-SKIP_DOMAINS = {"connpass.com", "doorkeeper.jp", "devpost.com"}
+SKIP_DOMAINS = {"connpass.com", "doorkeeper.jp", "devpost.com", "craftstadium.com"}
 
 
 def handler(event, context):

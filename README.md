@@ -13,7 +13,17 @@
 | connpass | 公式 API（API キーを申請して取得） | API は個人利用として申請。集約・公開型サービスとして使う場合は事前承諾が必要 | 個人利用の範囲で継続 |
 | Doorkeeper | 公式 API | 競合サービスへの利用は禁止。利用規約・プライバシーポリシーの設置が必要 | 個人利用の範囲で継続 |
 | Devpost | 非公式 JSON エンドポイント | 利用規約で自動取得（スクレイピング）が禁止 | **取得を停止**。コレクターと保存済みデータを削除 |
-| TECH PLAY・CraftStadium・AI Festival・Web 検索で見つけたページ | ページを自動取得し、Bedrock で項目を抽出 | — | 個人利用の範囲で継続 |
+| TECH PLAY | ページを自動取得し、Bedrock で項目を抽出 | 自動取得の禁止条項なし。robots.txt で `Crawl-delay: 5` | 5 秒間隔を守って継続 |
+| CraftStadium | ページを自動取得 | 利用規約 1.9 第13号で「ボット等の自動化プログラム」の利用を禁止 | **取得を停止**。コレクターと保存済みデータを削除 |
+| AI Festival | ページを自動取得 | 利用規約なし。robots.txt で全体を許可 | 継続 |
+| Google アラート | RSS フィード | Google 利用規約は robots.txt に反する自動アクセスを禁止。`/alerts/` は Disallow だが、RSS はフィードリーダー向けの提供形式 | 個人利用の範囲で継続 |
+| Tavily | 検索 API | 利用は内部目的に限る。第三者の規約順守は利用者の責任 | 継続。見つけたページは robots.txt を確認してから取得 |
+
+### 自動取得のルール
+
+- User-Agent は `HackathonJPBot/1.0 (personal use)` と名乗る（ブラウザを装わない）
+- スクレイパーは取得前に robots.txt を確認し、禁止されている URL は取得しない。`Crawl-delay` があればその秒数待ってから取得する
+- 自動取得を禁止している、または取得を停止した取得元（`devpost.com`・`craftstadium.com`）はブロックリストで除外する
 
 ### 非公開化のために行ったこと
 
@@ -62,7 +72,6 @@
         ├── GoogleAlertsCollector (06:10) ────────┘         │
         │                                          [Lambda: Deduplicator]
         ├── TavilyCollector (07:00) ───────────┐
-        ├── CraftStadiumCollector (07:15) ─────┤
         ├── AiFestivalCollector (07:20) ───────┤
         └── TechPlayCollector (07:25) ─────────┴──────────→ [SQS: ScraperQueue]
                                                                       │
@@ -140,7 +149,6 @@
 │       ├── google_alerts/
 │       ├── tavily/
 │       ├── techplay/
-│       ├── craftstadium/
 │       └── aifestival/
 ├── template.yaml                 # AWS SAM テンプレート
 ├── samconfig.toml                # SAM デプロイ設定（.gitignore対象）
@@ -303,11 +311,10 @@ aws apigateway get-api-key --api-key <ApiKeyId> --include-value --query value --
 | Google Alerts | 毎日 06:10 | Google Alerts RSS |
 | StatusUpdater | 毎日 06:30 | UPCOMING/PAST 自動更新 |
 | Tavily Web検索 | 毎日 07:00 | 上記以外の Web サイト |
-| CraftStadium | 毎日 07:15 | craftstadium.com |
 | AI Festival | 毎日 07:20 | aifestival.jp |
 | TECH PLAY | 毎日 07:25 | techplay.jp |
 
-収集は AWS 上で動くため、Mac の電源や画面の常駐とは関係なく毎日続く。Devpost は 2026年11月に取得を停止した。
+収集は AWS 上で動くため、Mac の電源や画面の常駐とは関係なく毎日続く。Devpost と CraftStadium は 2026年11月に取得を停止した。
 
 ## データ収集を手動実行
 
